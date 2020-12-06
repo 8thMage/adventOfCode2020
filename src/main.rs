@@ -1,25 +1,31 @@
 fn main() {
     let input = include_str!("input.txt");
-    //     let input =
-    // "BFFFBBFRRR: row 70, column 7, seat ID 567.
-    // FFFBBBFRRR: row 14, column 7, seat ID 119.
-    // BBFFBBFRLL: row 102, column 4, seat ID 820.
-    // ";
-    let vector: std::collections::HashSet<u64> = input
-        .replace("B", "1")
-        .replace("F", "0")
-        .replace("R", "1")
-        .replace("L", "0")
-        .lines()
-        .map(|s| u64::from_str_radix(&s, 2).unwrap())
-        .collect();
+//     let input = "abc
 
-    let first = vector.iter().max();
-    println!("{}", first.unwrap());
-    let second = vector
-        .iter()
-        .cloned()
-        .filter(|val| vector.contains(&(val + 2)) && !vector.contains(&(val + 1)))
-        .next();
-    println!("{}", second.unwrap());
+// a
+// b
+// c
+
+// ab
+// ac
+
+// a
+// a
+// a
+// a
+
+// b";
+    let groups = input.split_terminator("\r\n\r\n");
+    // let groups = input.split_terminator("\n\n");
+    let first = groups.fold(0u32, |acc, group| {
+        let sum = group.split_whitespace().fold(0u32, |acc, s| acc | s.chars().fold(0u32, |acc, c| acc | 1 << (c as usize - 'a' as usize)));
+        acc + sum.count_ones()
+    });
+    let groups = input.split_terminator("\r\n\r\n");
+    let second = groups.fold(0u32, |acc, group| {
+        let sum = group.split_whitespace().fold(u32::max_value(), |acc, s| acc & s.chars().fold(0u32, |acc, c| acc | 1 << (c as usize - 'a' as usize)));
+        acc + sum.count_ones()
+    });
+    println!("{}", first);
+    println!("{}", second);
 }
