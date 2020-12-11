@@ -1,52 +1,72 @@
 fn main() {
     let input = include_str!("input.txt");
-    //         let input = "nop +0
-    // acc +1
-    // jmp +4
-    // acc +3
-    // jmp -3
-    // acc -99
-    // acc +1
-    // jmp -4
-    // acc +6";
-    let mut instructions = input
+    //     let input =
+    // "35
+    // 20
+    // 15
+    // 25
+    // 47
+    // 40
+    // 62
+    // 55
+    // 65
+    // 95
+    // 102
+    // 117
+    // 150
+    // 182
+    // 127
+    // 219
+    // 299
+    // 277
+    // 309
+    // 576";
+    let numberOfElements = 25;
+    let vec = input
         .lines()
-        .map(|line| (&line[0..3], line[4..].parse::<i64>().unwrap(), 0))
-        .collect::<Vec<(&str, i64, i64)>>();
-
-    for instruction in 0..instructions.len() {
-        let mut acc = 0i64;
-        let mut ip = 0i64;
-        match instructions[instruction].0 {
-            "nop" => instructions[instruction].0 = "jmp",
-            "jmp" => instructions[instruction].0 = "nop",
-            _ => continue,
-        };
-        while ip as usize != instructions.len() && instructions[ip as usize].2 == 0 {
-            let mut currentInstruction = &mut instructions[ip as usize];
-            (*currentInstruction).2 += 1;
-            match currentInstruction.0 {
-                "nop" => ip += 1,
-                "acc" => {
-                    acc += currentInstruction.1 as i64;
-                    ip += 1
-                }
-                "jmp" => ip = ip + currentInstruction.1,
-                _ => panic!(),
-            }
-        }
-        if ip as usize == instructions.len() {
-            println!("{}", acc);
+        .map(|s| s.parse::<i64>().unwrap())
+        .collect::<Vec<i64>>();
+    let mut heap = vec[0..numberOfElements].to_vec();
+    heap.sort();
+    let mut invalid = 0;
+    for (i, x) in vec[numberOfElements..vec.len()].iter().enumerate() {
+        let isOk = heap
+            .iter()
+            .enumerate()
+            .filter(|(i, &n)| heap[i + 1..].binary_search(&(x - n)).is_ok()).count()
+           != 0;
+        if !isOk {
+            invalid = *x;
             break;
-        }
-        match instructions[instruction].0 {
-            "nop" => instructions[instruction].0 = "jmp",
-            "jmp" => instructions[instruction].0 = "nop",
-            _ => continue,
-        }
-        for i in 0..instructions.len() {
-            instructions[i].2 = 0;
+        } else {
+            heap.remove(heap.iter().position(|&n| n == vec[i]).unwrap());
+            heap.insert(heap.iter().position(|&n| n >= *x).unwrap_or(heap.len()), *x);
         }
     }
-    // println!("{}", acc);
+        
+
+    let scan = vec
+        .iter()
+        .scan(0i64, |acc, x| {
+            *acc = *acc + x;
+            Some(*acc - x)
+        })
+        .collect::<Vec<i64>>();
+    let res = scan
+        .iter()
+        .enumerate()
+        .map(|(index, &n)| {
+            scan[index + 1..]
+                .binary_search(&(invalid + n))
+                .map(|s| (s + index + 1, index))
+        })
+        .filter(|s| s.is_ok())
+        .next()
+        .unwrap()
+        .unwrap();
+    print!(
+        "{}, {}",
+        invalid,
+        vec[res.1..res.0].iter().min().unwrap() + vec[res.1..res.0].iter().max().unwrap()
+    )
 }
