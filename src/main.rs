@@ -1,199 +1,118 @@
 use std::collections::{HashMap, HashSet};
 fn main() {
+    let start_time = std::time::Instant::now();
     let input = include_str!("input.txt");
-    //     let input = "
-    // class: 0-1 or 4-19
-    // row: 0-5 or 8-19
-    // seat: 0-13 or 16-19
-
-    // your ticket:
-    // 11,12,13
-
-    // nearby tickets:
-    // 3,9,18
-    // 15,1,5
-    // 5,14,9
-    // ";
-
-    let iter = input
+    //     let input = ".#.
+    // ..#
+    // ###";
+    let mut gen = input
         .lines()
-        .filter_map(|s| s.split_terminator(": ").nth(1))
-        .map(|s| s.split_terminator(" or "));
-    let newArr = iter
-        .map(|two| {
-            two.map(|s| {
-                let mut seperate = s.split("-").map(|a| a.parse::<u32>().unwrap());
-                (seperate.nth(0).unwrap(), seperate.nth(0).unwrap())
+        .enumerate()
+        .flat_map(|(y, s)| {
+            s.chars().enumerate().filter_map(move |(x, c)| {
+                if c == '#' {
+                    Some((x as i32, y as i32, 0, 0))
+                } else {
+                    None
+                }
             })
-            .collect::<Vec<(u32, u32)>>()
         })
-        .collect::<Vec<Vec<(u32, u32)>>>();
-    let tickets = input
-        .split_terminator("nearby tickets:")
-        .nth(1)
-        .unwrap()
-        .lines()
-        .skip(1)
-        .map(|s| {
-            s.split_terminator(",")
-                .map(|v| v.parse::<u32>().unwrap())
-                .collect::<Vec<u32>>()
-        })
-        .collect::<Vec<Vec<u32>>>();
-    let mut sum = 0;
-    let mut correctTickets = Vec::new();
-    for ticketId in 0..tickets.len() {
-        let ticket = &tickets[ticketId];
-        let mut allCorrect = true;
-        for &val in ticket {
-            let correct = newArr.iter().fold(false, |acc, pairs| {
-                acc || pairs
-                    .iter()
-                    .fold(false, |acc, &(a, b)| acc || ((a <= val) && (val <= b)))
-            });
-            if (!correct) {
-                sum += val;
-                allCorrect = false;
-            }
-        }
-        if allCorrect {
-            correctTickets.push(ticket);
-        }
-    }
-    for ticketId in 0..correctTickets.len() {
-        let ticket = correctTickets[ticketId];
-        let mut allCorrect = true;
-        for &val in ticket {
-            let correct = newArr.iter().fold(false, |acc, pairs| {
-                acc || pairs
-                    .iter()
-                    .fold(false, |acc, &(a, b)| acc || ((a <= val) && (val <= b)))
-            });
-            if (!correct) {
-                panic!();
-            }
-        }
-    }
-    // for ticketId in 0..correctTickets.len() {
-    //     let ticket = &tickets[ticketId];
-    //     println!("{}",ticket[0]);
-    //     println!("");
-    // }
-    println!("{}", sum);
-    let mut possibleMats = Vec::new();
-    let length = correctTickets[0].len();
-    println!("{}", length);
-    possibleMats.resize(length, {
-        let mut v = Vec::new();
-        v.resize(length, true);
-        v
-    });
-    for ticketId in 0..correctTickets.len() {
-        let ticket = &correctTickets[ticketId];
-        for (index, &val) in ticket.iter().enumerate() {
-            for (indexPair, pairs) in newArr.iter().enumerate() {
-                let correct = pairs
-                    .iter()
-                    .fold(false, |acc, &(a, b)| acc || ((a <= val) && (val <= b)));
-                if (!correct) {
-                    possibleMats[indexPair][index] = false;
-                }
-            }
-        }
-    }
-    for line in 0..possibleMats.len() {
-        let line = &possibleMats[line];
-        for v in line {
-            print!("{},", *v as isize);
-        }
-        println!("");
-    }
-    println!("");
+        .collect::<HashSet<(i32, i32, i32, i32)>>();
+    let mut maxX = i32::MIN;
+    let mut maxY = i32::MIN;
+    let mut minX = i32::MAX;
+    let mut minY = i32::MAX;
+    let mut maxZ = i32::MIN;
+    let mut minZ = i32::MAX;
+    let mut maxW = i32::MIN;
+    let mut minW = i32::MAX;
 
-    loop {
-        let mut allOnes = true;
-        for lineIndex in 0..possibleMats.len() {
-            for line in 0..possibleMats.len() {
-                let line = &possibleMats[line];
-                for v in line {
-                    print!("{},", v);
-                }
-                println!("");
-            }
-            println!("");
+    for &(x, y, z, w) in &gen {
+        maxX = maxX.max(x);
+        maxY = maxY.max(y);
+        minX = minX.min(x);
+        minY = minY.min(y);
+        minZ = minZ.min(z);
+        maxZ = maxZ.max(z);
+        minW = minW.min(z);
+        maxW = maxW.max(z);
+    }
 
-            let (count, position) = {
-                let line = &possibleMats[lineIndex];
-                let count = line.iter().filter(|&v| *v).count();
-                let position = line.iter().position(|p| *p);
-                (count, position)
-            };
-            if (count == 1) {
-                let position = position.unwrap();
-                for lineIndex2 in 0..possibleMats.len() {
-                    if (lineIndex2 != lineIndex) {
-                        possibleMats[lineIndex2][position] = false;
+    for _ in 1..7 {
+        let mut newGen = HashSet::new();
+
+        let mut newMaxX = i32::MIN;
+        let mut newMaxY = i32::MIN;
+        let mut newMinX = i32::MAX;
+        let mut newMinY = i32::MAX;
+        let mut newMaxZ = i32::MIN;
+        let mut newMinZ = i32::MAX;
+        let mut newMaxW = i32::MIN;
+        let mut newMinW = i32::MAX;
+
+        for x in minX - 1..maxX + 2 {
+            for y in minY - 1..maxY + 2 {
+                for z in minZ - 1..maxZ + 2 {
+                    for w in minW - 1..maxW + 2 {
+                        let mut count = 0;
+                        for dx in -1..2 {
+                            for dy in -1..2 {
+                                for dz in -1..2 {
+                                    for dw in -1..2 {
+                                        if dx != 0 || dy != 0 || dz != 0 || dw != 0 {
+                                            count += gen.contains(&(x + dx, y + dy, z + dz, w + dw))
+                                                as i32;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if gen.contains(&(x, y, z, w)) {
+                            if count == 2 || count == 3 {
+                                newGen.insert((x, y, z, w));
+                                newMaxX = newMaxX.max(x);
+                                newMaxY = newMaxY.max(y);
+                                newMinX = newMinX.min(x);
+                                newMinY = newMinY.min(y);
+                                newMinZ = newMinZ.min(z);
+                                newMaxZ = newMaxZ.max(z);
+                                newMinW = newMinW.min(z);
+                                newMaxW = newMaxW.max(z);
+                            }
+                        } else {
+                            if count == 3 {
+                                newGen.insert((x, y, z, w));
+                                newMaxX = newMaxX.max(x);
+                                newMaxY = newMaxY.max(y);
+                                newMinX = newMinX.min(x);
+                                newMinY = newMinY.min(y);
+                                newMinZ = newMinZ.min(z);
+                                newMaxZ = newMaxZ.max(z);
+                                newMinW = newMinW.min(z);
+                                newMaxW = newMaxW.max(z);
+                            }
+                        }
                     }
                 }
             }
-            if (count == 0) {
-                panic!();
-            }
-            allOnes = allOnes & (count == 1);
         }
-        if allOnes {
-            break;
-        }
-        for lineIndex in 0..possibleMats.len() {
-            // for line in 0..possibleMats.len() {
-            //     let line: &Vec<bool> = &possibleMats.iter().map(|v| v[line]).collect();
-            //     for v in line {
-            //         print!("{},", v);
-            //     }
-            //     println!("");
-            // }
-            // println!("");
-
-            let (count, position) = {
-                let line: &Vec<bool> = &possibleMats.iter().map(|v| v[lineIndex]).collect();
-                // println!("{} {} {} ",line[0], line[1],line[2]);
-
-                let count = line.iter().filter(|&v| *v).count();
-                let position = line.iter().position(|p| *p);
-                (count, position)
-            };
-            if (count == 1) {
-                let position = position.unwrap();
-                // println!("{}, lineIndex {} ", position, lineIndex);
-                for lineIndex2 in 0..possibleMats.len() {
-                    if lineIndex2 != lineIndex {
-                        possibleMats[position][lineIndex2] = false;
-                    }
-                }
-            }
-            if (count == 0) {
-                panic!();
-            }
-
-            allOnes = allOnes & (count == 1);
-        }
-        if allOnes {
-            break;
-        }
+        gen = newGen;
+        maxX = newMaxX;
+        maxY = newMaxY;
+        minX = newMinX;
+        minY = newMinY;
+        maxZ = newMaxZ;
+        minZ = newMinZ;
+        maxW = newMaxW;
+        minW = newMinW;
     }
-    let myTicket = input
-        .split_terminator("your ticket:")
-        .nth(1)
-        .unwrap()
-        .lines()
-        .nth(1).unwrap()
-        .split_terminator(",")
-        .map(|v| v.parse::<usize>().unwrap())
-        .collect::<Vec<usize>>();
-    let mul = possibleMats
-        .iter()
-        .take(6)
-        .map(|v| v.iter().position(|s| *s))
-        .fold(1usize, |acc, s| acc * myTicket[s.unwrap()]);
-    println!("{}", mul);
+    println!("{}", gen.iter().count());
+    let end_time = std::time::Instant::now();
+    println!(
+        "{}",
+        end_time
+            .checked_duration_since(start_time)
+            .unwrap()
+            .as_millis()
+    );
 }
