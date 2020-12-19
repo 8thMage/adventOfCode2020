@@ -1,118 +1,174 @@
+use core::panic;
 use std::collections::{HashMap, HashSet};
 fn main() {
     let start_time = std::time::Instant::now();
     let input = include_str!("input.txt");
-    //     let input = ".#.
-    // ..#
-    // ###";
-    let mut gen = input
-        .lines()
-        .enumerate()
-        .flat_map(|(y, s)| {
-            s.chars().enumerate().filter_map(move |(x, c)| {
-                if c == '#' {
-                    Some((x as i32, y as i32, 0, 0))
-                } else {
-                    None
+        // let input = "((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2";
+    let res: isize = input.lines().map(|s| evaluateExpression1(s)).sum();
+    println!("{}", res);
+    // for line in input.lines() {
+    //     println!("{}", evaluateExpression2(line));
+    // }
+}
+fn evaluateExpression(s: &str) -> isize {
+    let mut acc = 0isize;
+    let mut operator = None;
+    let mut c = 0;
+    while (c < s.len()) {
+        match s.chars().nth(c).unwrap() {
+            '0'..='9' => {
+                let endC = s[c..]
+                    .chars()
+                    .position(|c| c < '0' || c > '9')
+                    .unwrap_or(s.len() - c);
+                let operand = s[c..c + endC].parse::<isize>().unwrap();
+                match operator {
+                    None => acc = operand,
+                    Some('+') => acc = acc + operand,
+                    Some('*') => acc = acc * operand,
+                    _ => panic!(),
                 }
-            })
-        })
-        .collect::<HashSet<(i32, i32, i32, i32)>>();
-    let mut maxX = i32::MIN;
-    let mut maxY = i32::MIN;
-    let mut minX = i32::MAX;
-    let mut minY = i32::MAX;
-    let mut maxZ = i32::MIN;
-    let mut minZ = i32::MAX;
-    let mut maxW = i32::MIN;
-    let mut minW = i32::MAX;
-
-    for &(x, y, z, w) in &gen {
-        maxX = maxX.max(x);
-        maxY = maxY.max(y);
-        minX = minX.min(x);
-        minY = minY.min(y);
-        minZ = minZ.min(z);
-        maxZ = maxZ.max(z);
-        minW = minW.min(z);
-        maxW = maxW.max(z);
-    }
-
-    for _ in 1..7 {
-        let mut newGen = HashSet::new();
-
-        let mut newMaxX = i32::MIN;
-        let mut newMaxY = i32::MIN;
-        let mut newMinX = i32::MAX;
-        let mut newMinY = i32::MAX;
-        let mut newMaxZ = i32::MIN;
-        let mut newMinZ = i32::MAX;
-        let mut newMaxW = i32::MIN;
-        let mut newMinW = i32::MAX;
-
-        for x in minX - 1..maxX + 2 {
-            for y in minY - 1..maxY + 2 {
-                for z in minZ - 1..maxZ + 2 {
-                    for w in minW - 1..maxW + 2 {
-                        let mut count = 0;
-                        for dx in -1..2 {
-                            for dy in -1..2 {
-                                for dz in -1..2 {
-                                    for dw in -1..2 {
-                                        if dx != 0 || dy != 0 || dz != 0 || dw != 0 {
-                                            count += gen.contains(&(x + dx, y + dy, z + dz, w + dw))
-                                                as i32;
-                                        }
-                                    }
-                                }
-                            }
+                c += endC + 1;
+            }
+            '+' | '*' => {
+                operator = Some(s.chars().nth(c).unwrap());
+                c += 2;
+            }
+            '(' => {
+                let mut openParen = 0;
+                let mut endC = c + 1;
+                for pos in c + 1..s.len() {
+                    match s.chars().nth(pos).unwrap() {
+                        '(' => {
+                            openParen += 1;
+                            continue;
                         }
-                        if gen.contains(&(x, y, z, w)) {
-                            if count == 2 || count == 3 {
-                                newGen.insert((x, y, z, w));
-                                newMaxX = newMaxX.max(x);
-                                newMaxY = newMaxY.max(y);
-                                newMinX = newMinX.min(x);
-                                newMinY = newMinY.min(y);
-                                newMinZ = newMinZ.min(z);
-                                newMaxZ = newMaxZ.max(z);
-                                newMinW = newMinW.min(z);
-                                newMaxW = newMaxW.max(z);
+                        ')' => {
+                            if openParen == 0 {
+                                endC = pos;
+                                break;
                             }
-                        } else {
-                            if count == 3 {
-                                newGen.insert((x, y, z, w));
-                                newMaxX = newMaxX.max(x);
-                                newMaxY = newMaxY.max(y);
-                                newMinX = newMinX.min(x);
-                                newMinY = newMinY.min(y);
-                                newMinZ = newMinZ.min(z);
-                                newMaxZ = newMaxZ.max(z);
-                                newMinW = newMinW.min(z);
-                                newMaxW = newMaxW.max(z);
-                            }
+                            openParen -= 1;
+                            continue;
                         }
+                        _ => continue,
                     }
+                    panic!();
+                }
+                let operand = evaluateExpression(&s[c + 1..endC]);
+                match operator {
+                    None => acc = operand,
+                    Some('+') => acc = acc + operand,
+                    Some('*') => acc = acc * operand,
+                    _ => panic!(),
+                }
+                c = endC + 1;
+            }
+            ' ' => c += 1,
+            _ => panic!(),
+        }
+    }
+    return acc;
+}
+
+fn evaluateExpression1(s: &str) -> isize {
+    let mut newSiginificantPos = 0;
+    let mut significance = 0;
+    let mut openParen = 0;
+    let mut operand = None;
+    for significantPos in 0..s.len() {
+        let ch = s.chars().nth(significantPos).unwrap();
+        match ch {
+            '*' => {
+                if openParen == 0 {
+                    operand = Some(ch);
+                    significance = 2;
+                    newSiginificantPos = significantPos;
                 }
             }
+            '+' => {
+                if openParen == 0 {
+                    operand = Some(ch);
+                    significance = 2;
+                    newSiginificantPos = significantPos;
+                }
+            }
+            '(' => {
+                if (openParen == 0) && significance < 1 {
+                    significance = 1;
+                    newSiginificantPos = significantPos;
+                }
+                openParen += 1;
+            }
+            ')' => {
+                openParen -= 1;
+            }
+            _ => continue,
         }
-        gen = newGen;
-        maxX = newMaxX;
-        maxY = newMaxY;
-        minX = newMinX;
-        minY = newMinY;
-        maxZ = newMaxZ;
-        minZ = newMinZ;
-        maxW = newMaxW;
-        minW = newMinW;
     }
-    println!("{}", gen.iter().count());
-    let end_time = std::time::Instant::now();
-    println!(
-        "{}",
-        end_time
-            .checked_duration_since(start_time)
-            .unwrap()
-            .as_millis()
-    );
+    if significance == 0 {
+        return s.parse().unwrap();
+    }
+    if significance == 1 {
+        return evaluateExpression2(&s[1..s.len() - 1]);
+    }
+    if significance == 2 {
+        match operand {
+            Some('+') =>         return evaluateExpression2(&s[0..newSiginificantPos - 1])
+            + evaluateExpression2(&s[newSiginificantPos + 2..s.len()]),
+            Some('*') =>         return evaluateExpression2(&s[0..newSiginificantPos - 1])
+            * evaluateExpression2(&s[newSiginificantPos + 2..s.len()]),
+            _=>panic!(),
+        }
+    }
+    panic!();
+}
+
+fn evaluateExpression2(s: &str) -> isize {
+    let mut newSiginificantPos = 0;
+    let mut significance = 0;
+    let mut openParen = 0;
+    for significantPos in 0..s.len() {
+        let ch = s.chars().nth(significantPos).unwrap();
+        match ch {
+            '*' => {
+                if openParen == 0 && significance < 3 {
+                    significance = 3;
+                    newSiginificantPos = significantPos;
+                }
+            }
+            '+' => {
+                if openParen == 0 && significance < 2 {
+                    significance = 2;
+                    newSiginificantPos = significantPos;
+                }
+            }
+            '(' => {
+                if (openParen == 0) && significance < 1 {
+                    significance = 1;
+                    newSiginificantPos = significantPos;
+                }
+                openParen += 1;
+            }
+            ')' => {
+                openParen -= 1;
+            }
+            _ => continue,
+        }
+    }
+    if significance == 0 {
+        return s.parse().unwrap();
+    }
+    if significance == 1 {
+        return evaluateExpression2(&s[1..s.len() - 1]);
+    }
+    if significance == 2 {
+        return evaluateExpression2(&s[0..newSiginificantPos - 1])
+            + evaluateExpression2(&s[newSiginificantPos + 2..s.len()]);
+    }
+    if significance == 3 {
+        return evaluateExpression2(&s[0..newSiginificantPos - 1])
+            * evaluateExpression2(&s[newSiginificantPos + 2..s.len()]);
+    }
+    panic!();
 }
