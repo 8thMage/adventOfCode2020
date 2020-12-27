@@ -1,159 +1,99 @@
 use core::panic;
-use std::collections::{btree_map::Iter, HashMap, HashSet};
+use std::collections::{btree_map::Iter, HashMap, HashSet, VecDeque};
 fn main() {
     let start_time = std::time::Instant::now();
     let input = include_str!("input.txt");
-    let mut ingredientsLists = Vec::new();
-    let mut allergensLists = Vec::new();
-    for line in input.lines() {
-        let mut newThing = line.split_terminator("(contains ");
-        let ingridients = newThing.next().unwrap();
-        let allergens = newThing.next().unwrap();
-        let allergens = allergens.split_terminator(")").next().unwrap();
-        ingredientsLists.push(ingridients.split_terminator(" ").collect::<HashSet<&str>>());
-        allergensLists.push(allergens.split_terminator(", ").collect::<HashSet<&str>>());
-    }
-    let mut checkedAllergens = HashSet::new();
-    let mut suspiciousIngredients = HashSet::new();
-    for (index, ingredientsList) in ingredientsLists.iter().enumerate() {
-        for &ingredient in ingredientsList {
-            suspiciousIngredients.insert(ingredient);
-        }
-    }
-
-    for (index, allergensList) in allergensLists.iter().enumerate() {
-        for &allergen in allergensList {
-            if checkedAllergens.contains(allergen) {
-                continue;
-            }
-            let mut ingredientsIntersection = ingredientsLists[index].clone();
-            for (index2, otherList) in allergensLists.iter().enumerate() {
-                if otherList.contains(allergen) {
-                    ingredientsIntersection = ingredientsIntersection
-                        .intersection(&ingredientsLists[index2])
-                        .cloned()
-                        .collect();
-                }
-            }
-            suspiciousIngredients = suspiciousIngredients
-                .difference(&ingredientsIntersection)
-                .cloned()
-                .collect();
-            checkedAllergens.insert(allergen);
-        }
-    }
-    // for sus in &suspiciousIngredients {
-    //     println!("{}", sus);
+    let mut players = input.split_terminator("\n\n");
+    let mut player_one = players
+        .next()
+        .unwrap()
+        .lines()
+        .skip(1)
+        .map(|s| s.parse::<usize>().unwrap())
+        .collect::<std::collections::VecDeque<usize>>();
+    let mut player_two = players
+        .next()
+        .unwrap()
+        .lines()
+        .skip(1)
+        .map(|s| s.parse::<usize>().unwrap())
+        .collect::<std::collections::VecDeque<usize>>();
+    recursiveGame(&mut player_one, &mut player_two);
+    // while player_one.len() != 0 && player_two.len() != 0 {
+    //     let p1 = player_one.pop_front().unwrap();
+    //     let p2 = player_two.pop_front().unwrap();
+    //     if p1 < p2 {
+    //         player_two.push_back(p2);
+    //         player_two.push_back(p1);
+    //     } else {
+    //         player_one.push_back(p1);
+    //         player_one.push_back(p2);
+    //     }
     // }
-    for (index, ingredientsList) in ingredientsLists.iter().enumerate() {
-        let mut count = 0;
-        for ingredients in ingredientsList {
-            if suspiciousIngredients.contains(ingredients) {
-                // println!("{}", ingredients);
-            } else {
-                count = count + 1;
-            }
+    let player = {
+        if player_one.len() == 0 {
+            player_two
+        } else {
+            player_one
         }
-        println!("{} {}", count, allergensLists[index].len());
-    }
-    let mut result = HashMap::new();
-    let mut result2 = HashMap::new();
-    guessWork(
-        &ingredientsLists,
-        &allergensLists,
-        &suspiciousIngredients,
-        &mut result,
-        &mut result2,
-        0,
-    );
-    // let count = ingredientsLists.iter().flat_map(|ingredientsList| ingredientsList.iter().filter(|&ingredients| suspiciousIngredients.contains(ingredients))).count();
-    // println!("{}", count);
-    let mut keys: Vec<&str> = result.keys().cloned().collect();
-    keys.sort_by(|a, b| result[a].cmp(result[b]));
-    for key in &keys {
-        print!("{},", key);
-    }
-    println!("");
-    for key in &keys {
-        print!("{},", result[key]);
+    };
+    let score = player
+        .iter()
+        .rev()
+        .enumerate()
+        .fold(0, |acc, (index, p)| acc + (index + 1) * p);
+    println!("{}", score);
+    for p in player {
     }
 }
 
-fn guessWork<'a>(
-    ingerdientsLists: &'a Vec<HashSet<&'a str>>,
-    allergensLists: &'a Vec<HashSet<&'a str>>,
-    suspiciousIngredients: &HashSet<&str>,
-    AllergensIngredientsList: &mut HashMap<&'a str, &'a str>,
-    IngredientsAllergensList: &mut HashMap<&'a str, &'a str>,
-    line: usize,
+fn recursiveGame(
+    player_one: &mut VecDeque<usize>,
+    player_two: &mut VecDeque<usize>,
 ) -> bool {
-    if line == ingerdientsLists.len() {
-        for ingredientList in ingerdientsLists {
-            for ingredient in ingredientList {
-                if suspiciousIngredients.contains(ingredient) {
-                    continue;
-                }
-                if AllergensIngredientsList.contains_key(ingredient) {
-                    continue;
-                }
-                return false;
-            }
+    let mut control = HashSet::new();
+    while player_one.len() != 0 && player_two.len() != 0 {
+        let mut c = "".to_string();
+        for p in player_one.iter() {
+            c = c + " " + &p.to_string();
         }
-        return true;
-    }
-    let mut count = 0;
-    for allergen in &allergensLists[line] {
-        if IngredientsAllergensList.contains_key(allergen) {
-            continue;
+        c = c + "|";
+        for p in player_two.iter() {
+            c = c + " " + &p.to_string();
         }
-        count += 1;
-    }
-    let mut res = false;
-    for allergen in &allergensLists[line] {
-        if !IngredientsAllergensList.contains_key(allergen) {
-            continue;
-        }
-        if !ingerdientsLists[line].contains(IngredientsAllergensList[allergen]) {
+        if control.contains(&c) {
             return false;
+        } 
+        control.insert(c);
+        let p1 = player_one.pop_front().unwrap();
+        let p2 = player_two.pop_front().unwrap();
+        let mut win = p1 < p2;
+        let len1 = player_one.len();
+        let len2 = player_two.len();
+        if p1 <= player_one.len() && p2 <= player_two.len() {
+            let mut newPlayerOne = player_one
+                .iter()
+                .cloned()
+                .take(p1)
+                .collect::<VecDeque<usize>>();
+            let mut newPlayerTwo = player_two
+                .iter()
+                .cloned()
+                .take(p2)
+                .collect::<VecDeque<usize>>();
+            win = recursiveGame(&mut newPlayerOne, &mut newPlayerTwo);
+        }
+        if win {
+            player_two.push_back(p2);
+            player_two.push_back(p1);
+        } else {
+            player_one.push_back(p1);
+            player_one.push_back(p2);
         }
     }
-    if count == 0 {
-        return guessWork(
-            ingerdientsLists,
-            allergensLists,
-            suspiciousIngredients,
-            AllergensIngredientsList,
-            IngredientsAllergensList,
-            line + 1,
-        );
-    }
-    for allergen in &allergensLists[line] {
-        if IngredientsAllergensList.contains_key(allergen) {
-            continue;
-        }
-        for ingredient in &ingerdientsLists[line] {
-            if suspiciousIngredients.contains(ingredient) || AllergensIngredientsList.contains_key(ingredient) {
-                continue;
-            }
-            AllergensIngredientsList.insert(ingredient, allergen);
-            IngredientsAllergensList.insert(allergen, ingredient);
-            // println!("insert {} {}", ingredient, allergen);
-            let found = guessWork(
-                ingerdientsLists,
-                allergensLists,
-                suspiciousIngredients,
-                AllergensIngredientsList,
-                IngredientsAllergensList,
-                line
-            );
-            if found {
-                return true;
-            }
-            // println!("removed {} {}", ingredient, allergen);
-            AllergensIngredientsList.remove(ingredient);
-            IngredientsAllergensList.remove(allergen);
-        }
+    if player_one.len() == 0 {
+        return true;
+    } else {
         return false;
     }
-    return true;
 }
