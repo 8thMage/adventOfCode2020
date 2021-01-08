@@ -1,11 +1,20 @@
 use core::panic;
 fn main() {
-    let mut fib = Vec::new();
-    fib.push(1);
-    fib.push(1);
-    while fib.last().unwrap() <= &4000000 {
-        fib.push(fib.last().unwrap() + fib[fib.len() - 2]);
+    let mut newNum:i64 = 600851475143;
+    'i: for i in 2..newNum - 1 {
+        if i% 1000 == 0 {
+            // println!("{}", i);
+        }
+        if newNum % i == 0 {
+            for j in 2..i {
+                if i % j == 0 {
+                    continue 'i;
+                }
+            }
+            while newNum % i ==0 {
+                newNum = newNum / i;
+            }
+            println!("{}", i);
+        }
     }
-    let sum:i32 = fib.iter().filter(|&x| x % 2 == 0).sum();
-    println!("{}", sum);
 }
