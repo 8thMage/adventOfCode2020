@@ -15,7 +15,7 @@ pub fn prime_factors(a: i64) -> std::collections::HashSet<i64> {
     return res;
 }
 
-pub fn is_prime(a:i64) ->bool {
+pub fn is_prime(a: i64) -> bool {
     let mut j = 2;
     while j * j < a {
         if a % j == 0 {
@@ -24,4 +24,17 @@ pub fn is_prime(a:i64) ->bool {
         j += 1;
     }
     true
+}
+
+pub fn erathostenes_sieve(max_value: usize) -> std::collections::HashSet<usize> {
+    let mut primes = std::collections::HashSet::new();
+    let mut sieve = Vec::new();
+    sieve.resize(max_value, false);
+    for i in 2..max_value {
+        if sieve[i] == false {
+            primes.insert(i);
+        }
+        sieve.iter_mut().skip(i).step_by(i).for_each(|mut c| *c = true );
+    }
+    return primes;
 }
