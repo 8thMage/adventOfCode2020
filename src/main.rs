@@ -1,24 +1,40 @@
 use core::panic;
 fn main() {
-    println!("{}", gcd(10, 5));
-    println!("{}", gcd(20, 10));
-    println!("{}", gcd(100, 10));
-    let mut lcm = 1i64;
-    for i in 2..21 {
-        lcm = i * lcm / gcd(lcm, i);
+    let mut current = 2;
+    loop {
+        if prime_factors(current).len() == 4
+            && prime_factors(current + 1).len() == 4
+            && prime_factors(current + 2).len() == 4
+            && prime_factors(current + 3).len() == 4
+        {
+            println!("{}", current);
+            break;
+        }
+        current += 1;
     }
-    println!("{}", lcm);
 }
 
-fn gcd (a:i64, b:i64) -> i64 {
-    if a < b {
-        return gcd(b, a);
+fn prime_factors(a: i64) -> std::collections::HashSet<i64> {
+    let mut new_a = a;
+    let mut res = std::collections::HashSet::new();
+    let mut i = 2;
+    'i: while i * i < new_a {
+        if new_a % i == 0 {
+            let mut j = 2;
+            while j * j < i {
+                if i % j == 0 {
+                    i += 1;
+                    continue 'i;
+                }
+                j += 1;
+            }
+            while new_a % i == 0 {
+                new_a /= i;
+            }
+            res.insert(i);
+        }
+        i += 1;
     }
-    if b == 1 {
-        return b;
-    }
-    if b == 0 {
-        return a;
-    }
-    return gcd(b, a % b);
+    res.insert(new_a);
+    return res;
 }
