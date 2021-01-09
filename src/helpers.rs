@@ -26,13 +26,13 @@ pub fn is_prime(a: i64) -> bool {
     true
 }
 
-pub fn erathostenes_sieve(max_value: usize) -> std::collections::HashSet<usize> {
-    let mut primes = std::collections::HashSet::new();
+pub fn erathostenes_sieve(max_value: usize) -> Vec<usize> {
+    let mut primes = Vec::new();
     let mut sieve = Vec::new();
     sieve.resize(max_value, false);
     for i in 2..max_value {
         if sieve[i] == false {
-            primes.insert(i);
+            primes.push(i);
         }
         sieve.iter_mut().skip(i).step_by(i).for_each(|mut c| *c = true );
     }

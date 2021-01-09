@@ -1,57 +1,46 @@
 use core::panic;
 mod helpers;
-use helpers::prime_factors;
+use helpers::*;
 fn main() {
-    let mut input = "73167176531330624919225119674426574742355349194934
-96983520312774506326239578318016984801869478851843
-85861560789112949495459501737958331952853208805511
-12540698747158523863050715693290963295227443043557
-66896648950445244523161731856403098711121722383113
-62229893423380308135336276614282806444486645238749
-30358907296290491560440772390713810515859307960866
-70172427121883998797908792274921901699720888093776
-65727333001053367881220235421809751254540594752243
-52584907711670556013604839586446706324415722155397
-53697817977846174064955149290862569321978468622482
-83972241375657056057490261407972968652414535100474
-82166370484403199890008895243450658541227588666881
-16427171479924442928230863465674813919123162824586
-17866458359124566529476545682848912883142607690042
-24219022671055626321111109370544217506941658960408
-07198403850962455444362981230987879927244284909188
-84580156166097919133875499200524063689912560717606
-05886116467109405077541002256983155200055935729725
-71636269561882670428252483600823257530420752963450";
-    let digits = input
-        .chars()
-        .filter_map(|c| {
-            if c >= '0' && c <= '9' {
-                Some(c as i64 - '0' as i64)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<i64>>();
-    let mut mul = 1i64;
-    let mut max = 0i64;
-    let mut numberOfZeros = 0;
-    let len =13;
-    for index in 0..digits.len() - len {
-        if index >= len {
-            if digits[index - len] == 0 {
-                numberOfZeros -= 1;
-            } else {
-                mul /= digits[index - len];
-            }
+    let time = std::time::Instant::now();
+    let p = erathostenes_sieve(1000000);
+    for &prime in &p {
+        if prime == 120383 {
+            let _x = 0;
         }
-        if digits[index] == 0 {
-            numberOfZeros += 1;
-        } else {
-            mul *= digits[index];
+        let mut digits = Vec::new();
+        let mut newP = prime;
+        while newP != 0 {
+            digits.push(newP % 10);
+            newP /= 10;
         }
-        if numberOfZeros == 0 {
-            max = max.max(mul);
+        let digits = digits;
+        let mut max_count = 0;
+        for i in 1usize..(1 << digits.len()) { //>
+            let mut newDigits = digits.clone();
+            let mut count = 0;
+            let setBit = i.trailing_zeros() as usize;
+            let sameBit = newDigits.iter().enumerate().fold(true, |acc, (index, &c)| acc && (((i >> index) & 1 == 0) || c == newDigits[setBit]));
+            if (!sameBit) {
+                continue;
+            }
+            for new_digit in (i >> digits.len() - 1) & 1 as usize..10 {
+                for digit in 0..digits.len() {
+                    if (i >> digit) & 1 == 1 {
+                        newDigits[digit] = new_digit;
+                    }
+                }
+                let newNumber = newDigits.iter().rev().fold(0, |acc, d| acc * 10 + d);
+                if p.binary_search(&newNumber).is_ok() {
+                    count += 1;
+                }
+            }
+            max_count = max_count.max(count);
+        }
+        if max_count == 8 {
+            println!("{}", prime);
+            break;
         }
     }
-    println!("{}", max);
+    println!("{}", std::time::Instant::now().duration_since(time).as_millis());
 }
