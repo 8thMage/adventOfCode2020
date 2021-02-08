@@ -34,7 +34,21 @@ pub fn erathostenes_sieve(max_value: usize) -> Vec<usize> {
         if sieve[i] == false {
             primes.push(i);
         }
-        sieve.iter_mut().skip(i).step_by(i).for_each(|mut c| *c = true );
+        sieve
+            .iter_mut()
+            .skip(i)
+            .step_by(i)
+            .for_each(|mut c| *c = true);
     }
     return primes;
+}
+
+pub fn digits(num: usize) -> Vec<usize> {
+    let mut digits = Vec::new();
+    let mut newP = num;
+    while newP != 0 {
+        digits.push(newP % 10);
+        newP /= 10;
+    }
+    digits
 }
