@@ -4,12 +4,21 @@ mod helpers;
 use helpers::*;
 fn main() {
     let input = include_str!("input.txt");
-    let numbers = input.lines().map(|s| s.parse::<i32>().unwrap()).collect::<Vec<i32>>();
-    let mut acc = 0;
-    for (i, _) in numbers.iter().enumerate() {
-        if ( i >= 3 && numbers[i] > numbers[i - 3]) {
-            acc +=1;
+    let mut depth = 0;
+    let mut horizontal = 0;
+    let mut aim = 0;
+    let numbers = input.lines().for_each(|s|
+        if (s.starts_with("forward ")) {
+            let x = s.trim_start_matches("forward ").parse::<i32>().unwrap();
+            horizontal += x;
+            depth += aim * x;
         }
-    }
-    print!("{}",acc);
+        else if (s.starts_with("up ")) {
+            aim -= s.trim_start_matches("up ").parse::<i32>().unwrap();
+        }
+        else if (s.starts_with("down ")) {
+            aim += s.trim_start_matches("down ").parse::<i32>().unwrap();
+        }
+    );
+    print!("{}", depth * horizontal);
 }
