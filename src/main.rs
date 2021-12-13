@@ -4,35 +4,63 @@ mod helpers;
 use helpers::*;
 fn main() {
     let input = include_str!("input.txt");
-    let mut nums = input
-        .split(",")
-        .map(|s| s.parse::<i32>().unwrap())
-        .collect::<Vec<i32>>();
-    let mut new_fish = vec![];
-    let days = 256;
-    new_fish.resize(days + 9, 0i64);
-    let mut j = days + 9 - 1;
-    while j >= 0 {
-        let mut sum = 0i64;
-        let mut i = j + 9;
-        while i < new_fish.len() {
-            sum += 1;
-            sum += new_fish[i];
-            i+=7;
+    // let lines = input.lines().map(|s| s.split(" | ").skip(1).next().unwrap()).flat_map(|s| s.split(" ").filter(|s| s.len() == 2 || s.len() == 3|| s.len() == 4|| s.len() == 7));
+    // println!("{}", lines.count());
+    let validMappings = vec!["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
+    let mut allPermutations:Vec<Vec<char>> = vec![];
+    permutation(&mut vec!['a', 'b','c','d','e','f', 'g'], 0, &mut allPermutations);
+    let mut sum = 0;
+    for line in input.lines() {        
+        for p in &allPermutations {
+        let ok = line.split(" ").filter(|s| *s!= "|").fold(true, |a, s| {
+            let mut newString = String::new();
+            for c in s.chars() {
+                newString.push(p[c as usize - 'a' as usize]);
+            }
+            for m in &validMappings {
+                if newString.len() != m.len() {
+                    continue;
+                } else {
+                    if(m.chars().fold(true, |a, c| newString.contains(c) && a)) {
+                        return a;
+                    };
+                }
+            }
+            return false;
+        });
+        if ok {
+            let n = line.split(" | ").skip(1).next().unwrap().split(" ").fold(0, |a, s|  {
+                let mut newString = String::new();
+                for c in s.chars() {
+                    newString.push(p[c as usize - 'a' as usize]);
+                }
+                for (i, m) in validMappings.iter().enumerate() {
+                    if newString.len() != m.len() {
+                        continue;
+                    } else {
+                        if m.chars().fold(true, |a, c| newString.contains(c) && a) {
+                            return a * 10 + i;
+                        }
+                    }
+                } 
+                return 0  
+            });
+            sum += n;
         }
-        new_fish[j] = sum;
-        if (j == 0){
-            break;
-        }
-        j-=1;
     }
-    let mut sum = 0i64;
-    for fish in nums {
-        sum += new_fish[fish as usize] + 1;
-    }
-    println!("{}", sum);
+}
+println!("{}", sum);
 }
 
-fn same_slope(a: &Vec<i64>, b: &Vec<i64>) -> bool {
-    return (a[0] - a[2]) * (b[1] - b[3]) - (b[0] - b[2]) * (a[1] - a[3]) == 0;
+fn permutation(current_permutation:&mut Vec<char>, i:usize, result: &mut Vec<Vec<char>>) {
+    if i == current_permutation.len() {
+        result.push(current_permutation.clone());
+        return;
+    }
+    permutation(current_permutation, i+1, result);
+    for j in i+1..current_permutation.len() {
+        current_permutation.swap(i, j);
+        permutation(current_permutation, i+1, result);
+        current_permutation.swap(i, j);
+    }
 }
