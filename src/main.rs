@@ -8,29 +8,16 @@ fn main() {
         .split(",")
         .map(|s| s.parse::<i32>().unwrap())
         .collect::<Vec<i32>>();
-    let mut new_fish = vec![];
-    let days = 256;
-    new_fish.resize(days + 9, 0i64);
-    let mut j = days + 9 - 1;
-    while j >= 0 {
-        let mut sum = 0i64;
-        let mut i = j + 9;
-        while i < new_fish.len() {
-            sum += 1;
-            sum += new_fish[i];
-            i+=7;
+    let average:i32 = nums.iter().sum::<i32>() / nums.len() as i32;
+    // println!("{}", average);
+    let mut min = i64::max_value();
+    for i in 0.. *nums.iter().max().unwrap() {
+        let newSum = nums.iter().fold(0i64, |a, s| a + ((s - i).abs() * ((s - i).abs() + 1)) as i64 /2 );
+        if newSum < min {
+            min = newSum;
         }
-        new_fish[j] = sum;
-        if (j == 0){
-            break;
-        }
-        j-=1;
     }
-    let mut sum = 0i64;
-    for fish in nums {
-        sum += new_fish[fish as usize] + 1;
-    }
-    println!("{}", sum);
+    println!("{}", min);
 }
 
 fn same_slope(a: &Vec<i64>, b: &Vec<i64>) -> bool {
