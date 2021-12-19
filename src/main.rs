@@ -4,63 +4,65 @@ mod helpers;
 use helpers::*;
 fn main() {
     let input = include_str!("input.txt");
-    // let lines = input.lines().map(|s| s.split(" | ").skip(1).next().unwrap()).flat_map(|s| s.split(" ").filter(|s| s.len() == 2 || s.len() == 3|| s.len() == 4|| s.len() == 7));
-    // println!("{}", lines.count());
-    let validMappings = vec!["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
-    let mut allPermutations:Vec<Vec<char>> = vec![];
-    permutation(&mut vec!['a', 'b','c','d','e','f', 'g'], 0, &mut allPermutations);
+    let mut map: Vec<Vec<usize>> = input
+        .lines()
+        .map(|s| s.chars().map(|c| c as usize - '0' as usize).collect())
+        .collect();
     let mut sum = 0;
-    for line in input.lines() {        
-        for p in &allPermutations {
-        let ok = line.split(" ").filter(|s| *s!= "|").fold(true, |a, s| {
-            let mut newString = String::new();
-            for c in s.chars() {
-                newString.push(p[c as usize - 'a' as usize]);
+    let mut threeMax = [0,0,0];
+    for y in 0..map.len() {
+        for x in 0..map[0].len() {
+            if y > 0 && map[y - 1][x] <= map[y][x] {
+                continue;
             }
-            for m in &validMappings {
-                if newString.len() != m.len() {
-                    continue;
-                } else {
-                    if(m.chars().fold(true, |a, c| newString.contains(c) && a)) {
-                        return a;
-                    };
-                }
+            if x > 0 && map[y][x - 1] <= map[y][x] {
+                continue;
             }
-            return false;
-        });
-        if ok {
-            let n = line.split(" | ").skip(1).next().unwrap().split(" ").fold(0, |a, s|  {
-                let mut newString = String::new();
-                for c in s.chars() {
-                    newString.push(p[c as usize - 'a' as usize]);
-                }
-                for (i, m) in validMappings.iter().enumerate() {
-                    if newString.len() != m.len() {
-                        continue;
-                    } else {
-                        if m.chars().fold(true, |a, c| newString.contains(c) && a) {
-                            return a * 10 + i;
-                        }
-                    }
-                } 
-                return 0  
-            });
-            sum += n;
+            if x < map[0].len() - 1 && map[y][x + 1] <= map[y][x] {
+                continue;
+            }
+            if y < map.len() - 1 && map[y + 1][x] <= map[y][x] {
+                continue;
+            }
+            sum += map[y][x] + 1;
+            let mut set = std::collections::hash_set::HashSet::new();
+            set.insert((x,y));
+            sizeOfBasin(x, y, &map, &mut set);
+            if set.len() > threeMax[0] {
+                threeMax[2] = threeMax[1];
+                threeMax[1] = threeMax[0];
+                threeMax[0] = set.len();
+            }
+            else if set.len() > threeMax[1] {
+                threeMax[2] = threeMax[1];
+                threeMax[1] = set.len();
+            }
+            else if set.len() > threeMax[2] {
+                threeMax[2] = set.len();
+            }
         }
     }
-}
-println!("{}", sum);
+    println!("{}", sum);
+    println!("{}", threeMax[0] * threeMax[1] * threeMax[2]);
 }
 
-fn permutation(current_permutation:&mut Vec<char>, i:usize, result: &mut Vec<Vec<char>>) {
-    if i == current_permutation.len() {
-        result.push(current_permutation.clone());
-        return;
+fn sizeOfBasin(x:usize, y:usize, map:&Vec<Vec<usize>>, set:&mut std::collections::HashSet<(usize, usize)>) {
+    let current = map[y][x];
+    if y > 0 && map[y - 1][x] > current && map[y-1][x] < 9 && !set.contains(&(x,y-1)) {
+        set.insert((x, y-1));
+        sizeOfBasin(x, y-1, map, set);
     }
-    permutation(current_permutation, i+1, result);
-    for j in i+1..current_permutation.len() {
-        current_permutation.swap(i, j);
-        permutation(current_permutation, i+1, result);
-        current_permutation.swap(i, j);
+    if x > 0 && map[y][x - 1] > current && map[y][x - 1] < 9 && !set.contains(&(x-1,y)) {
+        set.insert((x - 1, y));
+        sizeOfBasin(x-1, y, map, set);
+    }
+    if !set.contains(&(x+1,y)) && x < map[0].len() - 1 && map[y][x + 1] > current && map[y][x + 1] < 9 {
+        set.insert((x + 1, y));
+        sizeOfBasin(x+1, y, map, set);
+    }
+    if !set.contains(&(x,y+1)) && y < map.len() - 1 && map[y+1][x] > current && map[y+1][x] < 9 {
+        set.insert((x, y + 1));
+        sizeOfBasin(x, y + 1, map, set);
     }
 }
+
