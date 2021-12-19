@@ -4,72 +4,81 @@ mod helpers;
 use helpers::*;
 fn main() {
     let input = include_str!("input.txt");
-    let mut points = HashMap::new();
-    points.insert(')', 3);
-    points.insert(']', 57);
-    points.insert('}', 1197);
-    points.insert('>', 25137);
+    let mut array: Vec<Vec<i32>> = input
+        .lines()
+        .map(|s| s.chars().map(|c| c as i32 - '0' as i32).collect())
+        .collect();
+    let delta = [
+        (1, 1),
+        (1, 0),
+        (1, -1),
+        (0, 1),
+        (0, -1),
+        (-1, 1),
+        (-1, 0),
+        (-1, -1),
+    ];
     let mut sum = 0;
-    let mut newScores = vec![];
-    'line: for line in input.lines() {
-        let mut stack = vec![];
-        for c in line.chars() {
-            match c {
-                '(' | '{' | '[' | '<' => {
-                    stack.push(c);
-                }
-                ')' => {
-                    let d = stack.pop();
-                    if d.unwrap_or('(') != '(' {
-                        sum += points[&')'];
-                        continue 'line;
-                    }
-                }
-                '}' => {
-                    let d = stack.pop();
-                    if d.unwrap_or('{') != '{' {
-                        sum += points[&'}'];
-                        continue 'line;
-                    }
-                }
-                ']' => {
-                    let d = stack.pop();
-                    if d.unwrap_or('[') != '[' {
-                        sum += points[&']'];
-                        continue 'line;
-                    }
-                }
-                '>' => {
-                    let d = stack.pop();
-                    if d.unwrap_or('<') != '<' {
-                        sum += points[&'>'];
-                        continue 'line;
-                    }
-                }
-                _ => {
-                    panic!();
+    let mut step = 0;
+    loop {
+        let mut shined = std::collections::hash_set::HashSet::new();
+        let mut need_to_shine = std::collections::hash_set::HashSet::new();
+        for (y, l) in array.iter_mut().enumerate() {
+            for (x, o) in l.iter_mut().enumerate() {
+                *o += 1;
+                if (*o > 9) {
+                    need_to_shine.insert((y, x));
                 }
             }
         }
-        let mut newSum = 0i64;
-        for s in stack.iter().rev() {
-            newSum *= 5;
-            newSum +=
-                match s {
-                    '(' => 1,
-                    '[' => 2,
-                    '{' => 3,
-                    '<' => 4,
-                    _ => 0
-                };
-            // println!("{}", newSum);
-     
+        while !need_to_shine.is_empty() {
+            let &(y, x) = need_to_shine.iter().next().unwrap();
+            need_to_shine.remove(&(y, x));
+            shined.insert((y, x));
+            for d in delta {
+                let newY = y as i64 + d.0;
+                let newX = x as i64 + d.1;
+                if (newY >= 0 && newX >= 0 && (newY as usize) < array.len() && (newX as usize) < array[0].len()) {
+                    array[newY as usize][newX as usize] += 1;
+                    if array[newY as usize][newX as usize] >= 10 && shined.get(&(newY as usize, newX as usize)) == None {
+                        need_to_shine.insert((newY as usize, newX as usize));
+                    }
+                }
+            }
+            // for (y, l) in array.iter_mut().enumerate() {
+            //     for (x, o) in l.iter_mut().enumerate() {
+            //         print!("{} ",o);
+            //     }
+            //     println!("");
+            // }
+            // println!("");
+
         }
-        newScores.push(newSum);
+        sum += shined.len();
+                    // for (y, l) in array.iter_mut().enumerate() {
+            //     for (x, o) in l.iter_mut().enumerate() {
+            //         print!("{} ",o);
+            //     }
+            //     println!("");
+            // }
+            // println!("");
+
+        if (shined.len() == array.len() * array[0].len()) {
+            println!("{}", step + 1);
+        }
+        for (y, x) in shined {
+            array[y][x] = 0;
+        }
+
+        step += 1;
+    }
+    for (y, l) in array.iter_mut().enumerate() {
+        for (x, o) in l.iter_mut().enumerate() {
+            print!("{}",o);
+        }
+        println!("");
     }
     println!("{}", sum);
-    newScores.sort();
-    println!("{}", newScores[newScores.len() / 2]);
 
 }
 
