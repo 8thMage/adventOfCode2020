@@ -5,63 +5,94 @@ use helpers::*;
 fn main() {
     let input = include_str!("input.txt");
     let mut lines = input.lines();
-    let mut points   = HashSet::new();
-    for line in lines.by_ref() {
-        if (line == "") {
-            break;
-        }
-        let mut values = line.split(",").map(|s| s.parse::<i32>().unwrap());
-        points.insert((values.next().unwrap(), values.next().unwrap()));
-    }
+    let mut firstLine = lines.next().unwrap();
+    lines.next();
+    let mut hash_map = HashMap::new();
     for line in lines {
-        if line.contains("fold along x=") {
-            let x_line = line.split_once("fold along x=").unwrap().1.parse::<i32>().unwrap();
-            points = points.into_iter().map(|p| {
-                if p.0 > x_line {
-                    return (2 * x_line - p.0, p.1);
-                }
-                return (p.0, p.1);
-            }).collect();
-        } else if line.contains("fold along y=") {
-            let y_line = line.split_once("fold along y=").unwrap().1.parse::<i32>().unwrap();
-            points = points.into_iter().map(|p| {
-                if p.1 > y_line {
-                    return (p.0, 2 * y_line - p.1);
-                }
-                return (p.0, p.1);
-            }).collect();
-        }
+        let (pair, res) = line.split_once(" -> ").unwrap();
+        let mut sum = vec![0; 26];
+        // sum[res.chars().next().unwrap() as usize - 'A' as usize] = 1;
+        sum[pair.chars().next().unwrap()as usize - 'A' as usize] = 1;
+        hash_map.insert(
+            (
+                pair.chars().next().unwrap(),
+                pair.chars().skip(1).next().unwrap(),
+                0,
+            ),
+            sum,
+        );
     }
-    let mut maxX = 0;
-    let mut minX = 100000;
-    let mut maxY = 0;
-    let mut minY = 100000;
-    for p in &points {
-        if p.0 < minX {
-            minX = p.0;
-        }
-        if p.0 > maxX {
-            maxX = p.0;
-        }
-        if p.1 < minY {
-            minY = p.1;
-        }
-        if p.1 > maxY {
-            maxY = p.1;
-        }
+    let mut rule = HashMap::new();
+    for line in input.lines().skip(2) {
+        let (pair, res) = line.split_once(" -> ").unwrap();
+        rule.insert(
+            (
+                pair.chars().next().unwrap(),
+                pair.chars().skip(1).next().unwrap(),
+            ),
+            res.chars().next().unwrap(),
+        );
     }
+    let stages = 40 ;
+    let mut sum = vec![0; 26];
+    for pair in firstLine.chars().zip(firstLine.chars().skip(1)) {
+        bfs(&(pair.0, pair.1), stages, &rule, &mut hash_map);
+    }
+    for pair in firstLine.chars().zip(firstLine.chars().skip(1)) {
+        let a = &hash_map[&(pair.0, pair.1, stages)];
+        sum = a.iter().zip(sum.iter()).map(|(a, b)| a + b).collect();
+    }
+    sum[firstLine.chars().last().unwrap() as usize - 'A' as usize] += 1;
+    for s in &sum {
+        print!("{} ", s);
+    }
+    println!("");
+    let minSum = sum.iter().filter(|&&a| a != 0).min().unwrap();
+    let maxSum = sum.iter().filter(|&&a| a != 0).max().unwrap();
+    println!("{}", maxSum - minSum);
+}
 
-    for y in minY..maxY + 1 {
-        for x in minX..maxX + 1 {
-            if points.get(&(x, y)) != None {
-                print!("#");
-            }
-            else {
-                print!(".");
-            }
+fn bfs(
+    string: &(char, char),
+    layer: i32,
+    rule: &HashMap<(char, char), char>,
+    hash_map: &mut HashMap<(char, char, i32), Vec<i64>>,
+) {
+    println!("{}", layer);
+    println!("{} {}", string.0, string.1);
+    if let Some(arr) = hash_map.get(&(string.0, string.1, layer)) {
+        return;
+    } else {
+        let mut newString: (char, char) = ('a', 'a');
+        newString.0 = string.0;
+        newString.1 = rule[&string];
+        bfs(&newString, layer - 1, rule, hash_map);
+        let mut newString2: (char, char) = ('a', 'a');
+        newString2.0 = rule[&string];
+        newString2.1 = string.1;
+        bfs(&newString2, layer - 1, rule, hash_map);
+        let a = hash_map
+            .get(&(newString.0, newString.1, layer - 1))
+            .unwrap();
+        for s in a {
+            print!("{} ", s);
         }
         println!("");
-    }
-    // println!("{}", points.len());
 
+        let b = hash_map
+            .get(&(newString2.0, newString2.1, layer - 1))
+            .unwrap();
+        for s in b {
+            print!("{} ", s);
+        }
+        println!("");
+
+        let mut v: Vec<i64> = a.iter().zip(b.iter()).map(|(a, b)| a + b).collect();
+        // v[string.0 as usize - 'A' as usize] += 1;
+        for s in &v {
+            print!("{} ", s);
+        }
+        println!("");
+        hash_map.insert((string.0, string.1, layer), v);
+    }
 }
