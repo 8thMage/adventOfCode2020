@@ -1,98 +1,83 @@
-use core::panic;
-use std::collections::*;
-mod helpers;
-use helpers::*;
+// use core::panic;
+use std::{collections::*, thread::current, cmp::Reverse};
+// mod helpers;
+// use helpers::*;
 fn main() {
     let input = include_str!("input.txt");
-    let mut lines = input.lines();
-    let mut firstLine = lines.next().unwrap();
-    lines.next();
-    let mut hash_map = HashMap::new();
-    for line in lines {
-        let (pair, res) = line.split_once(" -> ").unwrap();
-        let mut sum = vec![0; 26];
-        // sum[res.chars().next().unwrap() as usize - 'A' as usize] = 1;
-        sum[pair.chars().next().unwrap()as usize - 'A' as usize] = 1;
-        hash_map.insert(
-            (
-                pair.chars().next().unwrap(),
-                pair.chars().skip(1).next().unwrap(),
-                0,
-            ),
-            sum,
-        );
+    let mut map: Vec<Vec<i32>> = input
+        .lines()
+        .map(|s| s.chars().map(|c| c as i32 - '0' as i32).collect())
+        .collect();
+    let mut new_map: Vec<Vec<i32>> = vec![vec![0; 5 * map.len()]; 5 * map.len()];
+    for i in 0..map.len() * 5 {
+        for j in 0..map.len() * 5 {
+            new_map[i][j] =
+                map[i % map.len()][j % map.len()] + (i / map.len() + j / map.len()) as i32;
+            if new_map[i][j] > 9 {
+                new_map[i][j] -= 9;
+            }
+        }
     }
-    let mut rule = HashMap::new();
-    for line in input.lines().skip(2) {
-        let (pair, res) = line.split_once(" -> ").unwrap();
-        rule.insert(
-            (
-                pair.chars().next().unwrap(),
-                pair.chars().skip(1).next().unwrap(),
-            ),
-            res.chars().next().unwrap(),
-        );
-    }
-    let stages = 40 ;
-    let mut sum = vec![0; 26];
-    for pair in firstLine.chars().zip(firstLine.chars().skip(1)) {
-        bfs(&(pair.0, pair.1), stages, &rule, &mut hash_map);
-    }
-    for pair in firstLine.chars().zip(firstLine.chars().skip(1)) {
-        let a = &hash_map[&(pair.0, pair.1, stages)];
-        sum = a.iter().zip(sum.iter()).map(|(a, b)| a + b).collect();
-    }
-    sum[firstLine.chars().last().unwrap() as usize - 'A' as usize] += 1;
-    for s in &sum {
-        print!("{} ", s);
-    }
-    println!("");
-    let minSum = sum.iter().filter(|&&a| a != 0).min().unwrap();
-    let maxSum = sum.iter().filter(|&&a| a != 0).max().unwrap();
-    println!("{}", maxSum - minSum);
+    let mut hash_map = HashSet::new();
+    let mut vec = BinaryHeap::new();
+    vec.push(Reverse((0, 0, 0)));
+    let result = bfs(&(0, 0), &mut hash_map, &new_map, &mut vec);
+    println!("{}", result);
 }
 
 fn bfs(
-    string: &(char, char),
-    layer: i32,
-    rule: &HashMap<(char, char), char>,
-    hash_map: &mut HashMap<(char, char, i32), Vec<i64>>,
-) {
-    println!("{}", layer);
-    println!("{} {}", string.0, string.1);
-    if let Some(arr) = hash_map.get(&(string.0, string.1, layer)) {
-        return;
-    } else {
-        let mut newString: (char, char) = ('a', 'a');
-        newString.0 = string.0;
-        newString.1 = rule[&string];
-        bfs(&newString, layer - 1, rule, hash_map);
-        let mut newString2: (char, char) = ('a', 'a');
-        newString2.0 = rule[&string];
-        newString2.1 = string.1;
-        bfs(&newString2, layer - 1, rule, hash_map);
-        let a = hash_map
-            .get(&(newString.0, newString.1, layer - 1))
-            .unwrap();
-        for s in a {
-            print!("{} ", s);
+    position: &(i32, i32),
+    hash_map: &mut HashSet<(i32, i32)>,
+    map: &Vec<Vec<i32>>,
+    free_queue: &mut BinaryHeap<Reverse<(i64, i32, i32)>>,
+) -> i64 {
+    while !free_queue.is_empty() {
+        let position = free_queue.pop().unwrap();
+        if !hash_map.get(&(position.0.1, position.0.2)).is_none() {
+            continue;
         }
-        println!("");
 
-        let b = hash_map
-            .get(&(newString2.0, newString2.1, layer - 1))
-            .unwrap();
-        for s in b {
-            print!("{} ", s);
+        if (position.0.1 as usize == map.len() - 1 && position.0.2 as usize == map.len() - 1) {
+            return position.0.0;
         }
-        println!("");
-
-        let mut v: Vec<i64> = a.iter().zip(b.iter()).map(|(a, b)| a + b).collect();
-        // v[string.0 as usize - 'A' as usize] += 1;
-        for s in &v {
-            print!("{} ", s);
+        // println!("{} {} {}", position.0.0, position.0.1, position.0.2);
+        hash_map.insert((position.0.1, position.0.2));
+        if position.0.1 < map.len() as i32 - 1 {
+            if hash_map.get(&(position.0.1 + 1, position.0.2)).is_none() {
+                free_queue.push(Reverse((
+                    position.0.0 + map[position.0.1 as usize + 1][position.0.2 as usize] as i64,
+                    position.0.1 + 1,
+                    position.0.2,
+                )));
+            }
         }
-        println!("");
-        hash_map.insert((string.0, string.1, layer), v);
+        if position.0.2 < map.len() as i32 - 1 {
+            if hash_map.get(&(position.0.1, position.0.2 + 1)).is_none() {
+                free_queue.push(Reverse((
+                    position.0.0 + map[position.0.1 as usize][position.0.2 as usize + 1] as i64,
+                    position.0.1,
+                    position.0.2 + 1,
+                )));
+            }
+        }
+        if position.0.1 > 0 {
+            if hash_map.get(&(position.0.1 - 1, position.0.2)).is_none() {
+                free_queue.push(Reverse((
+                    position.0.0 + map[position.0.1 as usize - 1][position.0.2 as usize] as i64,
+                    position.0.1 - 1,
+                    position.0.2,
+                )));
+            }
+        }
+        if position.0.2 > 0 {
+            if hash_map.get(&(position.0.1, position.0.2 - 1)).is_none() {
+                free_queue.push(Reverse((
+                    position.0.0 + map[position.0.1 as usize][position.0.2 as usize - 1] as i64,
+                    position.0.1,
+                    position.0.2 - 1,
+                )));
+            }
+        }
     }
+    return 0;
 }
