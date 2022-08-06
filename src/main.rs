@@ -1,278 +1,241 @@
 // use core::panic;
-use std::{cell::RefCell};
+use std::{
+    cell::RefCell,
+    collections::{hash_set, HashMap, HashSet},
+};
 // mod helpers;
 // use helpers::*;
 
-enum SnailNumberValue {
-    SnailValue(usize),
-    SnailPointer(Box<RefCell<SnailNumber>>),
+#[derive(PartialEq, Eq, Copy, Clone)]
+struct Orientation {
+    dirs: [usize; 3],
+    signs: [i64; 3],
 }
 
-use SnailNumberValue::*;
-
-struct SnailNumber {
-    left_value: SnailNumberValue,
-    right_value: SnailNumberValue,
+#[derive(PartialEq, Eq, Copy, Clone)]
+struct OrientationAndPosition {
+    orientation: Orientation,
+    position: Vector3,
 }
 
-fn create_snail_number_from_string(s: &str) -> (usize, SnailNumberValue) {
-    if &s[0..1] == "[" {
-        let (len, left) = create_snail_number_from_string(&s[1..]);
-        let (right_len, right) = create_snail_number_from_string(&s[2 + len..]);
-        let new_snail = Box::new(RefCell::new(SnailNumber {
-            left_value: left,
-            right_value: right,
-        }));
-        (right_len + len + 3, SnailPointer(new_snail))
-    } else {
-        (
-            1,
-            SnailNumberValue::SnailValue(usize::from_str_radix(&s[0..1], 10).unwrap()),
-        )
+impl Orientation {
+    fn compose(orientation1: &Orientation, orientation2: &Orientation) -> Orientation {
+        let mut new_dirs = [
+            orientation2.dirs[orientation1.dirs[0]],
+            orientation2.dirs[orientation1.dirs[1]],
+            orientation2.dirs[orientation1.dirs[2]],
+        ];
+        let mut new_signs = [
+            orientation2.signs[orientation1.dirs[0]] * orientation1.signs[0],
+            orientation2.signs[orientation1.dirs[1]] * orientation1.signs[1],
+            orientation2.signs[orientation1.dirs[2]] * orientation1.signs[2],
+        ];
+        Orientation {
+            dirs: new_dirs,
+            signs: new_signs,
+        }
+    }
+
+    fn apply(&self, vec: Vector3) -> Vector3 {
+        let new_vec = Vector3 {
+            v: [
+                vec.v[self.dirs[0]] * self.signs[0],
+                vec.v[self.dirs[1]] * self.signs[1],
+                vec.v[self.dirs[2]] * self.signs[2],
+            ],
+        };
+        new_vec
     }
 }
 
-fn print_snail(snail: &SnailNumberValue) {
-    match snail {
-        SnailNumberValue::SnailValue(value) => {
-            print!("{}", value)
-        }
-        SnailNumberValue::SnailPointer(snail) => {
-            print!("[");
-            print_snail(&snail.borrow().left_value);
-            print!(",");
-            print_snail(&snail.borrow().right_value);
-            print!("]");
-        }
-    }
+#[derive(PartialEq, Eq, Copy, Clone, Hash)]
+struct Vector3 {
+    v: [i64; 3],
 }
 
-#[derive(PartialEq)]
-enum Action {
-    Split(usize),
-    Explode {
-        left_value: usize,
-        right_value: usize,
-    },
-    ExplodeLeft {
-        left_value: usize,
-    },
-    ExplodeRight {
-        right_value: usize,
-    },
-    DoneAction,
-    None,
-}
-
-fn find_next_to_right(snail: &mut SnailNumberValue, update_value: usize) -> bool {
-    match snail {
-        SnailValue(value) => {
-            *value += update_value;
-            return true;
-        }
-        SnailPointer(snail) => {
-            if find_next_to_right(&mut snail.borrow_mut().left_value, update_value) {
-                return true;
-            }
-            return false;
+impl std::ops::Sub for Vector3 {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vector3 {
+            v: [
+                self.v[0] - rhs.v[0],
+                self.v[1] - rhs.v[1],
+                self.v[2] - rhs.v[2],
+            ],
         }
     }
 }
 
-fn find_next_to_left(snail: &mut SnailNumberValue, update_value: usize) -> bool {
-    match snail {
-        SnailValue(value) => {
-            *value += update_value;
-            return true;
+impl std::ops::Add for Vector3 {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector3 {
+            v: [
+                self.v[0] + rhs.v[0],
+                self.v[1] + rhs.v[1],
+                self.v[2] + rhs.v[2],
+            ],
         }
-        SnailPointer(snail) => {
-            if find_next_to_left(&mut snail.borrow_mut().right_value, update_value) {
-                return true;
-            }
-            return false;
+    }
+}
+impl OrientationAndPosition {
+    fn compose(
+        orientation1: &OrientationAndPosition,
+        orientation2: &OrientationAndPosition,
+    ) -> OrientationAndPosition {
+        let orientation =
+            Orientation::compose(&orientation1.orientation, &orientation2.orientation);
+        let position =
+            orientation1.position + orientation1.orientation.apply(orientation2.position);
+        OrientationAndPosition {
+            orientation,
+            position,
         }
     }
 }
 
-fn do_split(snail: &mut SnailNumberValue, index: usize) -> Action {
-    match snail {
-        SnailValue(value) => {
-            if *value >= 10 {
-                Action::Split(*value)
-            } else {
-                Action::None
-            }
-        }
-        SnailPointer(snail) => {
-            let left_action = do_split(&mut snail.borrow_mut().left_value, index + 1);
-            match left_action {
-                Action::Split(value) => {
-                    snail.borrow_mut().left_value = SnailPointer(Box::new(RefCell::new(SnailNumber {
-                        left_value: SnailValue(value / 2),
-                        right_value: SnailValue(value - value / 2),
-                    })));
-                    return Action::DoneAction;
-                }
-                Action::None => {}
-                Action::DoneAction => {
-                    return Action::DoneAction;
-                }
-                _ => {},
-            }
-
-            let right_action = do_split(&mut snail.borrow_mut().right_value, index + 1);
-            match right_action {
-                Action::Split(value) => {
-                    snail.borrow_mut().right_value = SnailPointer(Box::new(RefCell::new(SnailNumber {
-                        left_value: SnailValue(value / 2),
-                        right_value: SnailValue(value - value / 2),
-                    })));
-                    return Action::DoneAction;
-                }
-                Action::None => {}
-                Action::DoneAction => {
-                    return Action::DoneAction;
-                }
-                _ => {}
-            }
-            return Action::None;
+fn get_possible_orientation() -> Vec<Orientation> {
+    let mut acc = vec![];
+    for front_plus_sign in 0..6 {
+        let front_sign = if front_plus_sign / 3 == 0 { 1 } else { -1 };
+        let front = front_plus_sign % 3;
+        for rot in 0..4 {
+            let (left, up, left_sign, up_sign) = match rot {
+                0 => ((front + 1) % 3, (front + 2) % 3, front_sign, 1),
+                1 => ((front + 2) % 3, (front + 1) % 3, front_sign, -1),
+                2 => ((front + 1) % 3, (front + 2) % 3, -front_sign, -1),
+                3 => ((front + 2) % 3, (front + 1) % 3, -front_sign, 1),
+                _ => panic!(),
+            };
+            acc.push(Orientation {
+                dirs: [front, left, up],
+                signs: [front_sign, left_sign, up_sign],
+            })
         }
     }
+    acc
 }
 
-fn do_explode(snail: &mut SnailNumberValue, index: usize) -> Action {
-    match snail {
-        SnailValue(value) => {
-            Action::None
-        }
-        SnailPointer(snail) => {
-            if index >= 4 {
-                let left_value = match snail.borrow().left_value {
-                    SnailValue(value) => value,
-                    _ => panic!(),
-                };
-                let right_value = match snail.borrow().right_value {
-                    SnailValue(value) => value,
-                    _ => panic!(),
-                };
-                return Action::Explode { left_value, right_value };
-            }
-            let left_action = do_explode(&mut snail.borrow_mut().left_value, index + 1);
-            match left_action {
-                Action::Explode {
-                    left_value,
-                    right_value,
-                } => {
-                    snail.borrow_mut().left_value = SnailValue(0);
-                    find_next_to_right(&mut snail.borrow_mut().right_value, right_value);
-                    return Action::ExplodeLeft { left_value: left_value}
-                }
-                Action::ExplodeLeft { left_value } => {
-                    return Action::ExplodeLeft { left_value };
-                }
-                Action::ExplodeRight { right_value } => {
-                    find_next_to_right(&mut snail.borrow_mut().right_value, right_value);
-                    return Action::DoneAction;
-                }
-                Action::None | Action::Split(_) => {}
-                Action::DoneAction => {
-                    return Action::DoneAction;
-                }
-            }
-
-            let right_action = do_explode(&mut snail.borrow_mut().right_value, index + 1);
-            match right_action {
-                Action::Split(value) => {
-                }
-                Action::Explode {
-                    left_value,
-                    right_value,
-                } => {
-                    snail.borrow_mut().right_value = SnailValue(0);
-                    find_next_to_left(&mut snail.borrow_mut().left_value, left_value);
-                    return Action::ExplodeRight { right_value} 
-                }
-                Action::ExplodeLeft { left_value } => {
-                    find_next_to_left(&mut snail.borrow_mut().left_value, left_value);
-                    return Action::DoneAction;
-                }
-                Action::ExplodeRight { right_value } => {
-                    return Action::ExplodeRight { right_value };
-                }
-                Action::None => {}
-                Action::DoneAction => {
-                    return Action::DoneAction;
-                }
-            }
-            return Action::None;
-        }
-    }
-}
-
-
-fn do_action(snail: &mut SnailNumberValue, index: usize) -> Action {
-    if do_explode(snail, 0) != Action::None {
-        return Action::DoneAction;
-    }
-    if do_split(snail, 0) != Action::None {
-        return Action::DoneAction;
-    }
-    return Action::None;
-}
-
-fn reduce_snail(snail: &mut SnailNumberValue) {
-    // print_snail(&snail);
-    // println!();
-    while Action::None != do_action(snail, 0) {
-        // print_snail(&snail);
-        // println!();
-    }
-}
-
-fn magnitude(snail: &SnailNumberValue) -> usize {
-    match snail {
-        SnailValue(value) => *value,
-        SnailPointer(snail) => {
-            magnitude(&snail.borrow().left_value) * 3 + magnitude(&snail.borrow().right_value) * 2
-        }
-    }
-}
 fn main() {
     let input = include_str!("input.txt");
-    let mut first_number = input.lines().next().map(|s| create_snail_number_from_string(s)).unwrap();
-    reduce_snail(&mut first_number.1);
-    print_snail(&first_number.1);
-    println!();
-    let acc = input.lines().skip(1).fold(first_number.1, |acc, line| {
-        println!();
-        let second_fish = create_snail_number_from_string(line);
-        let mut new_snail = SnailPointer(Box::new(RefCell::new(SnailNumber {
-            left_value: acc,
-            right_value: second_fish.1,
-        })));
-        reduce_snail(&mut new_snail);
-        print_snail(&new_snail);
-        println!();
-        new_snail
-    });
-    print_snail(&acc);
-    let mut max = 0;
+    let mut scanners = vec![];
     for line in input.lines() {
-        for second_line in input.lines() {
-            let mut first_number = create_snail_number_from_string(line);
-            reduce_snail(&mut first_number.1);
-        
-            let second_fish = create_snail_number_from_string(second_line);
-            let mut new_snail = SnailPointer(Box::new(RefCell::new(SnailNumber {
-                left_value: first_number.1,
-                right_value: second_fish.1,
-            })));
-            reduce_snail(&mut new_snail);
-            max = max.max(magnitude(&new_snail));
+        if line.contains("---") {
+            scanners.push(vec![]);
+        } else if line != "" {
+            let mut l = line.split(",").map(|v| i64::from_str_radix(v, 10).unwrap());
+            let p = Vector3 {
+                v: [l.next().unwrap(), l.next().unwrap(), l.next().unwrap()],
+            };
+            scanners.last_mut().unwrap().push(p);
         }
     }
+    let orientations = get_possible_orientation();
+    let mut scanner_orientation_and_positions = HashMap::new();
+    for (index, scanner) in scanners.iter().enumerate() {
+        'big_loop: for (index2, second_scanner) in scanners.iter().enumerate() {
+            if index2 == index {
+                continue;
+            }
+            if index > index2 && !scanner_orientation_and_positions.contains_key(&(index2, index)) {
+                continue;
+            }
+            println!("{}", index2);
+            for orientation in &orientations {
+                let mut deltas = HashMap::new();
+                for beacon in scanner {
+                    if beacon.v[0] == -618 {
+                        let x =0;
+                    }
+                    for first_beacon_second_scanner in second_scanner {
+                        let delta = *beacon - orientation.apply(*first_beacon_second_scanner);
+                        if delta.v[0] == -68 {
+                            let x =0;
+                        }
+                        if deltas.contains_key(&(delta)) {
+                            *deltas
+                                .get_mut(&(delta))
+                                .unwrap() += 1;
+                            if *deltas
+                                .get_mut(&(delta))
+                                .unwrap()
+                                >= 12
+                            {
+                                scanner_orientation_and_positions.insert(
+                                    (index, index2),
+                                    OrientationAndPosition {
+                                        orientation: *orientation,
+                                        position: delta,
+                                    },
+                                );                            
+                                continue 'big_loop;
+                            }
+                        } else {
+                            deltas.insert(delta, 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    loop {
+        let mut run_again = false;
+        for i in 1..scanners.len() {
+            for j in 1..scanners.len() {
+                if scanner_orientation_and_positions.contains_key(&(0, i))
+                    && scanner_orientation_and_positions.contains_key(&(i, j))
+                    && !scanner_orientation_and_positions.contains_key(&(0, j))
+                {
+                    run_again = true;
+                    scanner_orientation_and_positions.insert(
+                        (0, j),
+                        OrientationAndPosition::compose(
+                            &scanner_orientation_and_positions[&(0, i)],
+                            &scanner_orientation_and_positions[&(i, j)],
+                        ),
+                    );
+                }
+            }
+        }
+        if !run_again {
+            break;
+        }
+    }
+    let mut beacons = HashSet::new();
+    for beacon in &scanners[0] {
+        beacons.insert(*beacon);
+    }
+    for i in 1..scanners.len() {
+        let x = 0;
+        for beacon in &scanners[i] {
+            let vec = scanner_orientation_and_positions[&(0, i)].position
+                + scanner_orientation_and_positions[&(0, i)]
+                    .orientation
+                    .apply(*beacon);
+            beacons.insert(vec);
+        }
+    }
+    let mut max_dist = 0;
+    for i in 1..scanners.len() {
+        let dist = scanner_orientation_and_positions[&(0, i)]
+            .position
+            .v
+            .iter()
+            .fold(0, |acc, a| acc + a.abs());
+        max_dist = max_dist.max(dist);
 
+        for j in 1..scanners.len() {
+            let dist = scanner_orientation_and_positions[&(0, i)]
+                .position
+                .v
+                .iter()
+                .zip(scanner_orientation_and_positions[&(0, j)].position.v.iter())
+                .fold(0, |acc, (a, b)| acc + (a - b).abs());
+            max_dist = max_dist.max(dist);
+        }
+    }
     println!();
-    println!("magnitude {}", magnitude(&acc));
-    println!("max {}", max);
+    println!("{}", beacons.len());
+    println!("{}", max_dist);
+    let x = 0;
 }
