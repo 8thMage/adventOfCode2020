@@ -1,2 +1,9 @@
 /target
 **/*.rs.bk
+Cargo.lock
+<<<<<<< HEAD
+./Cargo.lock
+Cargo.lock
+=======
+Cargo.lock
+>>>>>>> f3f5bc3 (gitignore fix)
