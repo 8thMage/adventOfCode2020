@@ -7,43 +7,11 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'advent'",
-            "cargo": {
-                "env": {
-                    "RUSTFLAGS": "-O -C target-cpu=native"
-                },
-                "args": [
-                    "build",
-                    "--release",
-                    "--bin=advent",
-                    "--package=advent"
-                ],
-                "filter": {
-                    "name": "advent",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'advent'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=advent",
-                    "--package=advent"
-                ],
-                "filter": {
-                    "name": "advent",
-                    "kind": "bin"
-                }
-            },
+            "name": "Launch",
+            "program": "${workspaceFolder}/target/debug/advent.exe",
             "args": [],
             "cwd": "${workspaceFolder}"
         }
+
     ]
 }

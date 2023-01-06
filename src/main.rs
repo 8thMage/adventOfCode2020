@@ -1,17 +1,21 @@
 fn main() {
     let input = include_str!("input.txt");
-    let mut max_sum = 0;
-    let mut sums = vec![];
-    for line_groutp in input.split("\n\n") {
-        let mut sum = 0;
-        for line in line_groutp.lines() {
-            sum += u64::from_str_radix(line, 10).unwrap();
-        }
-        sums.push(sum);
-        max_sum = sum.max(max_sum);
+    let mut sum = 0;
+    for line in input.lines() {
+        let strs = line.split_once(" ").unwrap_or(("0","0"));
+        let op = strs.0.chars().next().unwrap() as usize - 'A' as usize;
+        let you = strs.1.chars().next().unwrap() as usize - 'X' as usize;
+        let you2 = (2+ op + you)% 3;
+        sum += you2+1;
+        // println!("  {}",sum);
+
+        sum += match (6+you2 - op) % 3 {
+            0 => 3 ,
+            1 => 6,
+            2 => 0,
+            _=>0,
+        };
+        // println!("{}",sum);
     }
-    sums.sort();
-    
-    println!("{}", max_sum);
-    println!("{}", sums[sums.len() - 1] + sums[sums.len() - 2] +sums[sums.len() - 3] );
+    println!("{}",sum);
 }
