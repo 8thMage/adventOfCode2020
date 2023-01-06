@@ -9,8 +9,12 @@
             "request": "launch",
             "name": "Debug executable 'advent'",
             "cargo": {
+                "env": {
+                    "RUSTFLAGS": "-O -C target-cpu=native"
+                },
                 "args": [
                     "build",
+                    "--release",
                     "--bin=advent",
                     "--package=advent"
                 ],
