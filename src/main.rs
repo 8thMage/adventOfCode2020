@@ -5,52 +5,28 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    let trees: Vec<Vec<char>> = input.lines().map(|line| line.chars().collect()).collect();
-    let mut sum = 0;
-    let mut max = 0;
-    for y in 0..trees.len() {
-        for x in 0..trees[0].len() {
-            let tree_height = trees[y][x];
-            let mut tests = vec![true; 4];
-            let mut sums = vec![0; 4];
-            for y1 in (0..y).rev() {
-                sums[0] += 1;
-                if trees[y1][x] >= tree_height {
-                    tests[0] = false;
-                    break;
+    let mut pos = vec![(0i32, 0i32); 10];
+    let mut visited = HashSet::new();
+    for line in input.lines() {
+        let (dir, number) = line.split_once(" ").unwrap();
+        for _ in 0..u32::from_str(number).unwrap() {
+            match dir {
+                "R" => {
+                    pos[0].0 += 1;
+                }
+                "L" => pos[0].0 -= 1,
+                "U" => pos[0].1 -= 1,
+                "D" => pos[0].1 += 1,
+                _ => panic!(),
+            }
+            for i in 0..pos.len() - 1 {
+                if (pos[i].0 - pos[i + 1].0).abs() > 1 || (pos[i].1 - pos[i+1].1).abs() > 1 {
+                    pos[i + 1].0 += (pos[i].0 - pos[i + 1].0).signum();
+                    pos[i + 1].1 += (pos[i].1 - pos[i + 1].1).signum();
                 }
             }
-
-            for y1 in y + 1..trees.len() {
-                sums[1] += 1;
-
-                if trees[y1][x] >= tree_height {
-                    tests[1] = false;
-                    break;
-                }
-            }
-            for x1 in (0..x).rev() {
-                sums[2] += 1;
-
-                if trees[y][x1] >= tree_height {
-                    tests[2] = false;
-                    break;
-                }
-            }
-            for x1 in x + 1..trees.len() {
-                sums[3] += 1;
-
-                if trees[y][x1] >= tree_height {
-                    tests[3] = false;
-                    break;
-                }
-            }
-            if tests.iter().any(|x| *x) {
-                sum += 1;
-            }
-            max = sums.iter().fold(1, |x, y| y * x).max(max);
+            visited.insert(pos[pos.len() - 1]);
         }
     }
-    println!("{}", sum);
-    println!("{}", max);
+    println!("{}", visited.len());
 }
