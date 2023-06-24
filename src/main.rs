@@ -5,28 +5,46 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut pos = vec![(0i32, 0i32); 10];
-    let mut visited = HashSet::new();
-    for line in input.lines() {
-        let (dir, number) = line.split_once(" ").unwrap();
-        for _ in 0..u32::from_str(number).unwrap() {
-            match dir {
-                "R" => {
-                    pos[0].0 += 1;
-                }
-                "L" => pos[0].0 -= 1,
-                "U" => pos[0].1 -= 1,
-                "D" => pos[0].1 += 1,
-                _ => panic!(),
+    let mut cycle = 0;
+    let mut delay = 0;
+    let mut reg = 1_i32;
+    let mut adder = 0;
+    let mut sum = 0;
+    let mut lines = input.lines();
+    let mut screen = vec![vec!['.'; 40]; 6];
+    loop {
+        if delay == 0 {
+            let Some(line) = lines.next() else {
+                break;
+            };
+            
+            if line == "noop" {
+                delay = 1;
+            } else {
+                adder = i32::from_str(line.split_once("addx ").unwrap().1).unwrap();
+                delay = 2;
             }
-            for i in 0..pos.len() - 1 {
-                if (pos[i].0 - pos[i + 1].0).abs() > 1 || (pos[i].1 - pos[i+1].1).abs() > 1 {
-                    pos[i + 1].0 += (pos[i].0 - pos[i + 1].0).signum();
-                    pos[i + 1].1 += (pos[i].1 - pos[i + 1].1).signum();
-                }
-            }
-            visited.insert(pos[pos.len() - 1]);
+        }
+        if ((cycle % 40) - reg).abs() <= 1 {
+            screen[cycle as usize / 40 ][cycle as usize % 40] = '#';
+        }
+        cycle += 1;
+
+        if cycle% 40 == 20 {
+            sum+= cycle * reg;
+        }
+
+        delay -= 1;
+        if delay == 0 {
+            reg += adder;
+            adder = 0;
         }
     }
-    println!("{}", visited.len());
+    println!("{}", sum);
+    for line in screen.iter() {
+        for char in line.iter() {
+            print!("{}", char);
+        }
+        println!("");
+    }
 }
