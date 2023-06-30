@@ -1,97 +1,106 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    hash::Hash,
     str::FromStr,
+    vec,
 };
-
-enum Operation {
-    Mul(u32),
-    Add(u32),
-    Sqr,
-}
-
-struct Monkey {
-    items: Vec<u128>,
-    operation: Operation,
-    divisible_by: u32,
-    dests: [usize; 2],
-}
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut monkeys = vec![];
-    for line in input.lines() {
-        if line.starts_with("Monkey") {
-            monkeys.push(Monkey {
-                items: vec![],
-                operation: Operation::Add(0),
-                divisible_by: 0,
-                dests: [0, 0],
-            });
-            continue;
-        }
-        if line.starts_with("  Starting items: ") {
-            let line = line.split_once("  Starting items: ").unwrap().1;
-            monkeys.last_mut().unwrap().items = line
-                .split(", ")
-                .filter(|s| !s.is_empty())
-                .map(|s| u128::from_str(s).unwrap())
-                .collect();
-            continue;
-        }
-        if line.starts_with("  Operation: new = ") {
-            let line = line.split_once("Operation: new = ").unwrap().1;
-            if line == "old * old" {
-                monkeys.last_mut().unwrap().operation = Operation::Sqr;
-            } else {
-                if line.starts_with("old * ") {
-                    let mul = u32::from_str(line.split_once("old * ").unwrap().1).unwrap();
-                    monkeys.last_mut().unwrap().operation = Operation::Mul(mul);
-                }
-                if line.starts_with("old + ") {
-                    let adder = u32::from_str(line.split_once("old + ").unwrap().1).unwrap();
-                    monkeys.last_mut().unwrap().operation = Operation::Add(adder);
-                }
+    let mut s_pos = (0, 0);
+    let mut e_pos = (0, 0);
+    let map: Vec<Vec<usize>> = input
+        .lines()
+        .enumerate()
+        .map(|(y, line)| {
+            line.chars()
+                .enumerate()
+                .map(|(x, c)| {
+                    if c == 'S' {
+                        s_pos = (x, y);
+                        0
+                    } else if c == 'E' {
+                        e_pos = (x, y);
+                        'z' as usize - 'a' as usize
+                    } else {
+                        c as usize - 'a' as usize
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    {
+        let mut visited_nodes = HashMap::new();
+        let mut wavefront = Vec::new();
+        wavefront.push((s_pos, 0));
+        while !wavefront.is_empty() {
+            let (vector, item) = wavefront.remove(0);
+            let val = map[vector.1][vector.0];
+            println!("{:?} {} {}", vector, item, ('a' as u8 + val as u8) as char);
+            if vector == e_pos {
+                println!("{}", item);
+                break;
             }
-            continue;
-        }
-        if line.starts_with("  Test: divisible by ") {
-            let divisor = u32::from_str(line.split_once("Test: divisible by ").unwrap().1).unwrap();
-            monkeys.last_mut().unwrap().divisible_by = divisor;
-            continue;
-        }
-        if line.starts_with("    If true: throw to monkey ") {
-            let dest0 =
-                usize::from_str(line.split_once("If true: throw to monkey ").unwrap().1).unwrap();
-            monkeys.last_mut().unwrap().dests[0] = dest0;
-            continue;
-        }
-
-        if line.starts_with("    If false: throw to monkey ") {
-            let dest1 =
-                usize::from_str(line.split_once("If false: throw to monkey ").unwrap().1).unwrap();
-            monkeys.last_mut().unwrap().dests[1] = dest1;
-            continue;
+            if visited_nodes.contains_key(&vector) {
+                continue;
+            }
+            visited_nodes.insert(vector, item);
+            for delta in [(1, 0), (usize::MAX, 0), (0, usize::MAX), (0, 1)] {
+                let new_x = vector.0.wrapping_add(delta.0);
+                let new_y = vector.1.wrapping_add(delta.1);
+                if new_x == usize::MAX
+                    || new_y == usize::MAX
+                    || new_x >= map[0].len()
+                    || new_y >= map.len()
+                {
+                    continue;
+                }
+                if map[vector.1][vector.0] + 1 < map[new_y][new_x] {
+                    continue;
+                }
+                if visited_nodes.contains_key(&(new_x, new_y)) {
+                    continue;
+                }
+                let new_price = item + 1;
+                wavefront.push(((new_x, new_y), new_price));
+            }
         }
     }
-    let gcd:u32 = monkeys.iter().map(|m| m.divisible_by).product();
-
-    let mut sums = vec![0; monkeys.len()];
-    for _ in 0..10000 {
-        for index in 0..monkeys.len() {
-            sums[index] += monkeys[index].items.len();
-            for item in monkeys[index].items.clone().iter() {
-                let new_item = match monkeys[index].operation {
-                    Operation::Sqr => item * item,
-                    Operation::Mul(mul) => item * mul as u128,
-                    Operation::Add(adder) => item + adder as u128,
-                } % gcd as u128 ;
-                let pick = (new_item % monkeys[index].divisible_by as u128 != 0) as usize;
-                let dest = monkeys[index].dests[pick];
-                monkeys[dest].items.push(new_item);
+    {
+        let mut visited_nodes = HashMap::new();
+        let mut wavefront = Vec::new();
+        wavefront.push((e_pos, 0));
+        while !wavefront.is_empty() {
+            let (vector, item) = wavefront.remove(0);
+            let val = map[vector.1][vector.0];
+            println!("{:?} {} {}", vector, item, ('a' as u8 + val as u8) as char);
+            if map[vector.1][vector.0] == 0 {
+                println!("{}", item);
+                break;
             }
-            monkeys[index].items.clear();
+            if visited_nodes.contains_key(&vector) {
+                continue;
+            }
+            visited_nodes.insert(vector, item);
+            for delta in [(1, 0), (usize::MAX, 0), (0, usize::MAX), (0, 1)] {
+                let new_x = vector.0.wrapping_add(delta.0);
+                let new_y = vector.1.wrapping_add(delta.1);
+                if new_x == usize::MAX
+                    || new_y == usize::MAX
+                    || new_x >= map[0].len()
+                    || new_y >= map.len()
+                {
+                    continue;
+                }
+                if map[new_y][new_x] + 1 < map[vector.1][vector.0] {
+                    continue;
+                }
+                if visited_nodes.contains_key(&(new_x, new_y)) {
+                    continue;
+                }
+                let new_price = item + 1;
+                wavefront.push(((new_x, new_y), new_price));
+            }
         }
     }
-    sums.sort();
-    println!("{}", sums[sums.len() - 1] * sums[sums.len() - 2]);
 }
