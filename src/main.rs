@@ -5,163 +5,62 @@ use std::{
     vec,
 };
 
-#[derive(Clone, Copy)]
-enum ValueValue {
-    Value,
-    Pointer,
-}
-
-#[derive(Clone, Copy)]
-enum Value {
-    Value(ValueValue, i32),
-    Pointer(ValueValue, usize),
-}
-
-struct Entry {
-    values: Vec<Value>,
-    parent: usize,
-}
-
-fn get_tree(mut line: &str) -> Vec<Entry> {
-    let mut arr = vec![Entry {
-        values: vec![],
-        parent: 0,
-    }];
-    let mut current_parent = 0;
-    line = &line[1..];
-    while !line.is_empty() {
-        if line.chars().next() == Some('[') {
-            arr.push(Entry {
-                values: vec![],
-                parent: current_parent,
-            });
-            let len = arr.len();
-            arr[current_parent]
-                .values
-                .push(Value::Pointer(ValueValue::Pointer, len - 1));
-            current_parent = arr.len() - 1;
-            line = &line[1..];
-        } else if line.chars().next() == Some(']') {
-            current_parent = arr[current_parent].parent;
-            line = &line[1..];
-        } else if line.chars().next() == Some(',') {
-            line = &line[1..];
-        } else {
-            let split = line.split_once([',', ']']).unwrap();
-            let number = i32::from_str(split.0).unwrap();
-            arr.push(Entry {
-                values: vec![Value::Value(ValueValue::Value, number)],
-                parent: current_parent,
-            });
-
-            line = &line[split.0.len()..];
-            let len = arr.len() - 1;
-            arr[current_parent]
-                .values
-                .push(Value::Pointer(ValueValue::Pointer, len));
-        }
-    }
-    arr
-}
-
-fn compare(
-    line_a: &Vec<Entry>,
-    line_b: &Vec<Entry>,
-    line_a_current: usize,
-    line_b_current: usize,
-) -> i8 {
-    let mut index_a = 0;
-    let mut index_b = 0;
-    loop {
-        if index_a >= line_a[line_a_current].values.len() {
-            if index_b == line_b[line_b_current].values.len() {
-                return 0;
-            } else {
-                return -1;
-            }
-        }
-        if index_b >= line_b[line_b_current].values.len() {
-            return 1;
-        }
-        match (
-            line_a[line_a_current].values[index_a],
-            line_b[line_b_current].values[index_b],
-        ) {
-            (Value::Pointer(_, pointer_a), Value::Pointer(_, pointer_b)) => {
-                let val = compare(line_a, line_b, pointer_a, pointer_b);
-                if val != 0 {
-                    return val;
-                }
-                index_a += 1;
-                index_b += 1;
-            }
-            (Value::Value(_, pointer_a), Value::Value(_, pointer_b)) => {
-                if pointer_a < pointer_b {
-                    return -1;
-                }
-                if pointer_b < pointer_a {
-                    return 1;
-                }
-                index_a += 1;
-                index_b += 1;
-            }
-            (Value::Value(_, _), Value::Pointer(_, pointer_b)) => {
-                let val = compare(line_a, line_b, line_a_current, pointer_b);
-                if val != 0 {
-                    return val;
-                }
-                index_a += 1;
-                index_b += 1;
-            }
-            (Value::Pointer(_, pointer_a), Value::Value(_, _)) => {
-                let val = compare(line_a, line_b, pointer_a, line_b_current);
-                if val != 0 {
-                    return val;
-                }
-                index_b += 1;
-                index_a += 1;
-            }
-        }
-    }
-}
-
 fn main() {
     let input = include_str!("input.txt");
-    let mut lines = input.lines();
-    let mut index = 1;
-    let mut sum = 0;
-    let mut vector = vec![];
-    vector.push(get_tree("[[6]]"));
-    vector.push(get_tree("[[2]]"));
-    loop {
-        let line_a = get_tree(lines.next().unwrap());
-        let line_b = get_tree(lines.next().unwrap());
-        let val = compare(&line_a, &line_b, 0, 0);
-        if val == -1 {
-            sum += index;
+    let mut stone = HashSet::new();
+    let mut max_y = 0;
+    for line in input.lines() {
+        let mut last_coord = None;
+        for coords in line.split(" -> ") {
+            let coords = coords.split_once(",").unwrap();
+            let x = i32::from_str(coords.0).unwrap();
+            let y = i32::from_str(coords.1).unwrap();
+            max_y = max_y.max(y);
+            if let Some((x0, y0)) = last_coord {
+                if x != x0 {
+                    for x1 in x.min(x0)..=x0.max(x) {
+                        stone.insert((x1, y0));
+                    }
+                }
+                if y != y0 {
+                    for y1 in y.min(y0)..=y0.max(y) {
+                        stone.insert((x0, y1));
+                    }
+                }
+            }
+            last_coord = Some((x, y));
         }
-        index += 1;
-        vector.push(line_a);
-        vector.push(line_b);
-        let Some(_line_c) = lines.next() else {
+    }
+
+    let mut path = vec![(500, 0)];
+    let mut count = 0;
+    loop {
+        let Some(&(x,y)) = path.last() else {
             break;
         };
+        if stone.contains(&(x, y)) {
+            path.pop();
+            continue;
+        }
+        // if y >= max_y {
+        //     break;
+        // }
+        if y < max_y + 1 {
+            if !stone.contains(&(x, y + 1)) {
+                path.push((x, y + 1));
+                continue;
+            }
+            if !stone.contains(&(x - 1, y + 1)) {
+                path.push((x - 1, y + 1));
+                continue;
+            }
+            if !stone.contains(&(x + 1, y + 1)) {
+                path.push((x + 1, y + 1));
+                continue;
+            }
+        }
+        count += 1;
+        stone.insert((x, y));
     }
-    vector.sort_by(|a, b| match compare(a, b, 0, 0) {
-        0 => std::cmp::Ordering::Equal,
-        1 => std::cmp::Ordering::Greater,
-        -1 => std::cmp::Ordering::Less,
-        _ => panic!(),
-    });
-    println!("{:?}", lines.next());
-    println!("{}", sum);
-    let index_a = vector
-        .iter()
-        .position(|a| compare(a, &get_tree("[[6]]"), 0, 0) == 0)
-        .unwrap();
-    let index_b = vector
-        .iter()
-        .position(|a| compare(a, &get_tree("[[2]]"), 0, 0) == 0)
-        .unwrap();
-    println!("{}", (index_a + 1) * (index_b + 1));
+    println!("{}", count);
 }
