@@ -12,6 +12,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--release",
                     "--bin=advent",
                     "--package=advent"
                 ],

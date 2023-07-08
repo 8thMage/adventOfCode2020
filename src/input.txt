@@ -1,29 +1,62 @@
-Sensor at x=3797530, y=3451192: closest beacon is at x=3316341, y=3328308
-Sensor at x=3779164, y=33938: closest beacon is at x=4608350, y=708806
-Sensor at x=1331810, y=3260896: closest beacon is at x=2075597, y=3280016
-Sensor at x=393374, y=696899: closest beacon is at x=2021690, y=453306
-Sensor at x=2928048, y=923094: closest beacon is at x=2021690, y=453306
-Sensor at x=2386726, y=3645023: closest beacon is at x=2075597, y=3280016
-Sensor at x=1900159, y=2381031: closest beacon is at x=1649961, y=2000000
-Sensor at x=2601378, y=2979844: closest beacon is at x=2218962, y=2701963
-Sensor at x=2254818, y=32199: closest beacon is at x=2021690, y=453306
-Sensor at x=2689643, y=375840: closest beacon is at x=2021690, y=453306
-Sensor at x=909141, y=2842547: closest beacon is at x=2218962, y=2701963
-Sensor at x=3915731, y=2454320: closest beacon is at x=4268501, y=1853073
-Sensor at x=1693574, y=1344104: closest beacon is at x=1649961, y=2000000
-Sensor at x=1760260, y=3297662: closest beacon is at x=2075597, y=3280016
-Sensor at x=1909567, y=3990737: closest beacon is at x=2075597, y=3280016
-Sensor at x=2097863, y=3179766: closest beacon is at x=2075597, y=3280016
-Sensor at x=3100489, y=3623847: closest beacon is at x=3104748, y=4102403
-Sensor at x=2746023, y=2432826: closest beacon is at x=2218962, y=2701963
-Sensor at x=3031245, y=3031354: closest beacon is at x=3316341, y=3328308
-Sensor at x=277094, y=1999350: closest beacon is at x=1649961, y=2000000
-Sensor at x=1763269, y=126349: closest beacon is at x=2021690, y=453306
-Sensor at x=3287624, y=2695420: closest beacon is at x=3316341, y=3328308
-Sensor at x=2371102, y=1745103: closest beacon is at x=1649961, y=2000000
-Sensor at x=3553438, y=1563379: closest beacon is at x=4268501, y=1853073
-Sensor at x=1529129, y=2735122: closest beacon is at x=2218962, y=2701963
-Sensor at x=2826220, y=3958350: closest beacon is at x=3104748, y=4102403
-Sensor at x=3999334, y=3912693: closest beacon is at x=3104748, y=4102403
-Sensor at x=240430, y=3829436: closest beacon is at x=-742036, y=3963149
-Sensor at x=3455748, y=3814861: closest beacon is at x=3316341, y=3328308
+Valve AV has flow rate=0; tunnels lead to valves AX, PI
+Valve JI has flow rate=0; tunnels lead to valves VD, HF
+Valve FF has flow rate=0; tunnels lead to valves ZL, CG
+Valve CG has flow rate=10; tunnels lead to valves TI, SU, RV, FF, QX
+Valve RC has flow rate=18; tunnels lead to valves EQ, WR, AD
+Valve ZJ has flow rate=0; tunnels lead to valves GJ, WI
+Valve GJ has flow rate=21; tunnels lead to valves TG, YJ, EU, AZ, ZJ
+Valve VJ has flow rate=0; tunnels lead to valves UJ, AA
+Valve ER has flow rate=0; tunnels lead to valves QO, ZK
+Valve QO has flow rate=24; tunnels lead to valves MF, ER
+Valve LN has flow rate=0; tunnels lead to valves ZR, TI
+Valve SU has flow rate=0; tunnels lead to valves CG, LM
+Valve AJ has flow rate=12; tunnels lead to valves QX, JW, TR, MK
+Valve YJ has flow rate=0; tunnels lead to valves GJ, EQ
+Valve JW has flow rate=0; tunnels lead to valves YI, AJ
+Valve WI has flow rate=13; tunnels lead to valves XO, ZJ, ZL
+Valve VS has flow rate=0; tunnels lead to valves XL, VD
+Valve TI has flow rate=0; tunnels lead to valves LN, CG
+Valve VD has flow rate=17; tunnels lead to valves TR, VS, JI, GQ, VO
+Valve TX has flow rate=0; tunnels lead to valves FV, WR
+Valve HP has flow rate=0; tunnels lead to valves AX, ET
+Valve BK has flow rate=0; tunnels lead to valves PI, AD
+Valve ET has flow rate=0; tunnels lead to valves ZR, HP
+Valve VY has flow rate=0; tunnels lead to valves KU, LM
+Valve DZ has flow rate=0; tunnels lead to valves VO, AA
+Valve ZK has flow rate=0; tunnels lead to valves FR, ER
+Valve TG has flow rate=0; tunnels lead to valves GJ, AX
+Valve YI has flow rate=0; tunnels lead to valves JW, LM
+Valve XO has flow rate=0; tunnels lead to valves ZR, WI
+Valve ZR has flow rate=11; tunnels lead to valves KX, AZ, ET, LN, XO
+Valve EQ has flow rate=0; tunnels lead to valves RC, YJ
+Valve PI has flow rate=4; tunnels lead to valves BK, KX, VQ, EU, AV
+Valve VO has flow rate=0; tunnels lead to valves VD, DZ
+Valve WR has flow rate=0; tunnels lead to valves TX, RC
+Valve TF has flow rate=0; tunnels lead to valves FR, KU
+Valve FR has flow rate=22; tunnels lead to valves ZK, TF
+Valve MK has flow rate=0; tunnels lead to valves AJ, YW
+Valve AZ has flow rate=0; tunnels lead to valves GJ, ZR
+Valve TC has flow rate=0; tunnels lead to valves KU, RO
+Valve GQ has flow rate=0; tunnels lead to valves MF, VD
+Valve YW has flow rate=0; tunnels lead to valves MK, KU
+Valve AA has flow rate=0; tunnels lead to valves RO, EI, VJ, VQ, DZ
+Valve MF has flow rate=0; tunnels lead to valves QO, GQ
+Valve ZL has flow rate=0; tunnels lead to valves WI, FF
+Valve LM has flow rate=3; tunnels lead to valves YI, SU, UJ, VY, HF
+Valve KU has flow rate=9; tunnels lead to valves XL, TC, TF, VY, YW
+Valve FV has flow rate=23; tunnels lead to valves KV, TX
+Valve EU has flow rate=0; tunnels lead to valves PI, GJ
+Valve KV has flow rate=0; tunnels lead to valves FV, OF
+Valve QX has flow rate=0; tunnels lead to valves AJ, CG
+Valve RO has flow rate=0; tunnels lead to valves AA, TC
+Valve TR has flow rate=0; tunnels lead to valves VD, AJ
+Valve VQ has flow rate=0; tunnels lead to valves AA, PI
+Valve HF has flow rate=0; tunnels lead to valves JI, LM
+Valve RV has flow rate=0; tunnels lead to valves EI, CG
+Valve KX has flow rate=0; tunnels lead to valves PI, ZR
+Valve UJ has flow rate=0; tunnels lead to valves LM, VJ
+Valve AX has flow rate=5; tunnels lead to valves TG, AV, HP
+Valve XL has flow rate=0; tunnels lead to valves KU, VS
+Valve AD has flow rate=0; tunnels lead to valves BK, RC
+Valve EI has flow rate=0; tunnels lead to valves RV, AA
+Valve OF has flow rate=19; tunnel leads to valve KV
