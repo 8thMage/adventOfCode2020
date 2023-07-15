@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet, VecDeque},
     hash::Hash,
     iter, path,
@@ -9,89 +10,143 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut stones = HashSet::new();
-    let mut max_in_any_dim = 0;
-    for line in input.lines() {
-        let vec = line
-            .split(",")
-            .map(|s| i32::from_str(s).unwrap())
-            .collect::<Vec<_>>();
-        max_in_any_dim = max_in_any_dim.max(*vec.iter().max().unwrap());
-        stones.insert(vec);
-    }
-    let mut counter = 0;
-    let mut counter2 = 0;
-    let mut interior = HashSet::new();
-    let mut exterior = HashSet::new();
-    for entry in stones.iter() {
-        for i in 0..entry.len() {
-            for d in [-1, 1] {
-                let mut new_entry = entry.clone();
-                new_entry[i] += d;
-                if !stones.contains(&new_entry) {
-                    counter += 1;
-                    counter2 += fill(
-                        &new_entry,
-                        &stones,
-                        &mut interior,
-                        &mut exterior,
-                        max_in_any_dim,
-                    );
-                }
+    let mut sum = 1;
+    for line in input.lines().take(3) {
+        let mut iter = line
+            .split(['.', ':'])
+            .map(|s| {
+                s.split(" ")
+                    .filter_map(|s| u32::from_str(s).ok())
+                    .collect::<Vec<_>>()
+            })
+            .filter(|v| v.len() > 0);
+        let index = iter.next().unwrap()[0];
+        let mut resources_per_robot = iter.collect::<Vec<_>>();
+        for res in &mut resources_per_robot {
+            if res.len() == 1 {
+                res.push(0);
             }
         }
+        resources_per_robot[3].insert(1, 0);
+        for res in &mut resources_per_robot {
+            if res.len() == 2 {
+                res.push(0);
+            }
+        }
+        sum *= 
+             create_robots(
+                &resources_per_robot,
+                [1, 0, 0, 0],
+                [0; 4],
+                false,
+                0,
+                &mut HashMap::new(),
+            );
     }
-    println!("{}", counter);
-    println!("{}", counter2);
+    println!("{}", sum);
 }
 
-fn fill(
-    input: &Vec<i32>,
-    stones: &HashSet<Vec<i32>>,
-    interior: &mut HashSet<Vec<i32>>,
-    exterior: &mut HashSet<Vec<i32>>,
-    max_in_any_dim: i32,
-) -> i32 {
-    let mut should_be_filled = Vec::new();
-    let mut filled = HashSet::new();
-    should_be_filled.push(input.clone());
-    while let Some(entry) = should_be_filled.pop() {
-        for i in 0..entry.len() {
-            for d in [-1, 1] {
-                let mut new_entry = entry.clone();
-                new_entry[i] += d;
-                if stones.contains(&new_entry) {
-                    continue;
-                }
-                if interior.contains(&new_entry) {
-                    for i in filled.into_iter() {
-                        interior.insert(i);
-                    }
-                    while let Some(x) = should_be_filled.pop() {
-                        interior.insert(x);
-                    }
-                    return 0;
-                }
-                if exterior.contains(&new_entry)
-                    || new_entry.iter().any(|&s| s < 0 || s > max_in_any_dim)
-                {
-                    for i in filled.into_iter() {
-                        exterior.insert(i);
-                    }
-                    while let Some(x) = should_be_filled.pop() {
-                        exterior.insert(x);
-                    }
-                    return 1;
-                }
-                if !should_be_filled.contains(&new_entry) && !filled.contains(&new_entry) {
-                    should_be_filled.push(new_entry);
-                }
-            }
+#[derive(PartialEq, Eq, PartialOrd)]
+struct Entry {
+    robots: [u32; 4],
+    resources: [u32; 4],
+    minute: u32,
+    previously_built: bool,
+}
+
+impl Ord for Entry {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        ((self.resources[3] + self.robots[3] * self.minute) * 1000
+            + (self.resources[2] + self.robots[2] * self.minute))
+            .cmp(
+                &((other.resources[3] + other.robots[3] * other.minute) * 1000
+                    + (other.resources[2] + other.robots[2] * other.minute)),
+            )
+    }
+}
+
+fn create_robots(
+    resources_per_robots: &Vec<Vec<u32>>,
+    mut robots: [u32; 4],
+    mut resources: [u32; 4],
+    previously_built: bool,
+    minute: u32,
+    state_hash: &mut HashMap<Entry, u32>,
+) -> u32 {
+    let mut heap = std::collections::BinaryHeap::new();
+    // robots = [1, 0, 0, 0];
+    // resources = [4, 15, 0, 0];
+    // let minute = 10;
+    heap.push(Entry {
+        robots,
+        resources,
+        previously_built,
+        minute,
+    });
+    let mut max = 0;
+    while !heap.is_empty() {
+        let Entry {
+            mut robots,
+            mut resources,
+            previously_built,
+            minute,
+        } = heap.pop().unwrap();
+        if minute == 32 {
+            max = max.max(*resources.last().unwrap());
+            continue;
         }
-        filled.insert(entry);
+        let delta_time = 32 - minute;
+        if resources[3] + robots[3] * delta_time + (delta_time) * (delta_time - 1) / 2 <= max {
+            continue;
+        }
+
+        let possible_robots = resources_per_robots
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| {
+                v[0] <= resources[0]
+                    && v[1] <= resources[1]
+                    && v[2] <= resources[2]
+                    && (previously_built
+                        || (v[0] > (resources[0] - robots[0]) || v[1] > (resources[1] - robots[1]) || v[2] > (resources[2] - robots[2])))
+            })
+            .map(|(i, _v)| i)
+            .collect::<Vec<_>>();
+
+        for i in 0..resources.len() {
+            resources[i] += robots[i];
+        }
+        for &robot in possible_robots.iter().rev() {
+            resources[0] -= resources_per_robots[robot][0];
+            resources[1] -= resources_per_robots[robot][1];
+            resources[2] -= resources_per_robots[robot][2];
+            robots[robot] += 1;
+            let delta_time = 32 - minute;
+            if resources[3] + robots[3] * delta_time + (delta_time) * (delta_time - 1) / 2 <= max {
+                robots[robot] -= 1;
+                resources[0] += resources_per_robots[robot][0];
+                resources[1] += resources_per_robots[robot][1];
+                resources[2] += resources_per_robots[robot][2];
+                continue;
+            }
+            heap.push(Entry {
+                robots,
+                resources,
+                previously_built: true,
+                minute: minute + 1,
+            });
+            robots[robot] -= 1;
+            resources[0] += resources_per_robots[robot][0];
+            resources[1] += resources_per_robots[robot][1];
+            resources[2] += resources_per_robots[robot][2];
+        }
+        heap.push(Entry {
+            robots,
+            resources,
+            previously_built: false,
+            minute: minute + 1,
+        });
     }
-    for i in filled.into_iter() {
-        interior.insert(i);
-    }
-    return 0;
+    println!("{}", max);
+    max
 }
