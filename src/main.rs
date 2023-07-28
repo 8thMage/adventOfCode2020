@@ -1,93 +1,328 @@
 use std::{
     cmp::Ordering,
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{hash_map, HashMap, HashSet, VecDeque},
     hash::Hash,
-    iter, path,
+    iter,
+    ops::Neg,
+    path,
     str::FromStr,
     thread::current,
     vec,
 };
 
-#[derive(PartialEq, Clone, Copy, Debug)]
-enum RegValue {
-    Simple(i128),
-    Affine { mul: i128, add: i128, div: i128 },
-    None,
-}
-
 fn main() {
     let input = include_str!("input.txt");
-    let mut elves = vec![];
-    let mut elves_pos = HashSet::new();
-    for elf in input
+    let mut zero_state = vec![];
+    let mut width = 0;
+    let mut height = 0;
+    for (y, line) in input
         .lines()
+        .skip(1)
+        .take_while(|s| !s.contains("##"))
         .enumerate()
-        .flat_map(|(y, s)| iter::repeat(y).zip(s.chars().enumerate()))
-        .filter(|(y, (x, c))| *c == '#')
     {
-        elves.push((
-            (elf.0 as i32, elf.1 .0 as i32),
-            vec![[-1i32, 0], [1, 0], [0, -1], [0, 1]],
-        ));
-        elves_pos.insert([elf.0 as i32, elf.1 .0 as i32]);
-    }
-    let mut count = 0;
-    loop {
-        let mut intended = vec![];
-        let mut any_moved = false;
-        'elf: for (index, (elf_position, elf_priority)) in elves.iter().enumerate() {
-            if !(-1..=1).any(|dy| {
-                (-1..=1).any(|dx| {
-                    let new_pos = [elf_position.0 + dy, elf_position.1 + dx];
-                    (dx != 0 || dy != 0) && elves_pos.contains(&new_pos)
-                })
-            }) {
-                intended.push((index, [elf_position.0, elf_position.1]));
-                continue;
-            }
-            'dir: for dir in elf_priority {
-                let pos_zero = dir.iter().position(|x| *x == 0).unwrap();
-                for delta in -1..=1 {
-                    let mut new_delta = *dir;
-                    new_delta[pos_zero] = delta;
-                    let new_pos = [elf_position.0 + new_delta[0], elf_position.1 + new_delta[1]];
-                    if elves_pos.contains(&new_pos) {
-                        continue 'dir;
-                    }
+        for (x, c) in line.chars().enumerate() {
+            match c {
+                '>' | '<' | 'v' | '^' => {
+                    zero_state.push((y, x - 1, c));
                 }
-                let new_pos = [elf_position.0 + dir[0], elf_position.1 + dir[1]];
-                intended.push((index, new_pos));
-                continue 'elf;
+                _ => {}
             }
-            intended.push((index, [elf_position.0, elf_position.1]));
         }
-        for (index, pos) in intended.iter() {
-            if intended.iter().all(|(i2, p)| i2 == index || *p != *pos) {
-                if pos[0] != elves[*index].0 .0 || pos[1] != elves[*index].0 .1 {
-                    any_moved = true;
-
-                    elves_pos.remove(&[elves[*index].0 .0, elves[*index].0 .1]);
-                    elves[*index].0 .0 = pos[0];
-                    elves[*index].0 .1 = pos[1];
-                    elves_pos.insert([elves[*index].0 .0, elves[*index].0 .1]);
-                }
-            }
-            let p = elves[*index].1.remove(0);
-            elves[*index].1.push(p);
-        }
-        count += 1;
-        if !any_moved {
-            break;
-        }
+        width = line.len() - 2;
+        height += 1;
     }
 
-    let min_y = elves_pos.iter().map(|s| s[0]).min().unwrap();
-    let max_y = elves_pos.iter().map(|s| s[0]).max().unwrap();
-    let min_x = elves_pos.iter().map(|s| s[1]).min().unwrap();
-    let max_x = elves_pos.iter().map(|s| s[1]).max().unwrap();
-    println!(
-        "{}",
-        ((max_y - min_y + 1) * (max_x - min_x + 1)) as usize - elves_pos.len()
+    let mut min = find_min(&zero_state, 0, 0, width, height, &mut usize::MAX, 1);
+    min = find_min_rev(
+        &zero_state,
+        height - 1,
+        width - 1,
+        width,
+        height,
+        &mut usize::MAX,
+        min + 2,
     );
-    println!("{}", count);
+    min = find_min(&zero_state, 0, 0, width, height, &mut usize::MAX, min + 2);
+    println!("{}", min + 1);
+}
+
+#[derive(PartialEq, Eq)]
+struct State {
+    y: usize,
+    x: usize,
+    width: usize,
+    height: usize,
+    time: usize,
+}
+
+impl PartialOrd for State {
+    fn ge(&self, other: &Self) -> bool {
+        (self.y + self.x) as isize >= (other.y + other.x) as isize
+    }
+    fn lt(&self, other: &Self) -> bool {
+        ((self.y + self.x) as isize) < (other.y + other.x) as isize
+    }
+    fn gt(&self, other: &Self) -> bool {
+        (self.y + self.x) as isize > (other.y + other.x) as isize
+    }
+    fn le(&self, other: &Self) -> bool {
+        (self.y + self.x) as isize <= (other.y + other.x) as isize
+    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        ((self.y + self.x) as isize).partial_cmp(&((other.y + other.x) as isize))
+    }
+}
+impl Ord for State {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+#[derive(PartialEq, Eq)]
+struct RevState {
+    y: usize,
+    x: usize,
+    width: usize,
+    height: usize,
+    time: usize,
+}
+
+impl PartialOrd for RevState {
+    fn ge(&self, other: &Self) -> bool {
+        ((self.y + self.x) as isize).neg() >= ((other.y + other.x) as isize).neg()
+    }
+    fn lt(&self, other: &Self) -> bool {
+        (((self.y + self.x) as isize).neg()) < ((other.y + other.x) as isize).neg()
+    }
+    fn gt(&self, other: &Self) -> bool {
+        ((self.y + self.x) as isize).neg() > ((other.y + other.x) as isize).neg()
+    }
+    fn le(&self, other: &Self) -> bool {
+        ((self.y + self.x) as isize).neg() <= ((other.y + other.x) as isize).neg()
+    }
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        (((self.y + self.x) as isize).neg()).partial_cmp(&(((other.y + other.x) as isize).neg()))
+    }
+}
+impl Ord for RevState {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+fn find_min(
+    zero_state: &Vec<(usize, usize, char)>,
+    y: usize,
+    x: usize,
+    width: usize,
+    height: usize,
+    max_min: &mut usize,
+    time: usize,
+) -> usize {
+    let mut min_heap = std::collections::BinaryHeap::new();
+    min_heap.push(State {
+        x,
+        y,
+        time: time,
+        height,
+        width,
+    });
+    let mut checked = std::collections::HashSet::new();
+
+    while let Some(State { x, y, time, .. }) = min_heap.pop() {
+        if time + height - y + width - x >= *max_min {
+            continue;
+        }
+        if y == height - 1 && x == width - 1 {
+            *max_min = time;
+            println!("{}", time);
+            continue;
+        }
+        if !check_exists(zero_state, y, x + 1, width, height, time + 1)
+            && !checked.contains(&(y, x + 1, time + 1))
+        {
+            checked.insert((y, x + 1, time + 1));
+            min_heap.push(State {
+                x: x + 1,
+                y,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+        if !check_exists(zero_state, y + 1, x, width, height, time + 1)
+            && !checked.contains(&(y + 1, x, time + 1))
+        {
+            checked.insert((y + 1, x, time + 1));
+
+            min_heap.push(State {
+                x,
+                y: y + 1,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+        if !check_exists(zero_state, y, x.wrapping_sub(1), width, height, time + 1)
+            && !checked.contains(&(y, x.wrapping_sub(1), time + 1))
+        {
+            checked.insert((y, x.wrapping_sub(1), time + 1));
+
+            min_heap.push(State {
+                x: x.wrapping_sub(1),
+                y,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+
+        if !check_exists(zero_state, y.wrapping_sub(1), x, width, height, time + 1)
+            && !checked.contains(&(y.wrapping_sub(1), x, time + 1))
+        {
+            checked.insert((y.wrapping_sub(1), x, time + 1));
+
+            min_heap.push(State {
+                x,
+                y: y.wrapping_sub(1),
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+        if !check_exists(zero_state, y, x, width, height, time + 1)
+            && !checked.contains(&(y, x, time + 1))
+        {
+            checked.insert((y, x, time + 1));
+            min_heap.push(State {
+                x,
+                y,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+    }
+    *max_min
+}
+
+fn find_min_rev(
+    zero_state: &Vec<(usize, usize, char)>,
+    y: usize,
+    x: usize,
+    width: usize,
+    height: usize,
+    max_min: &mut usize,
+    time: usize,
+) -> usize {
+    let mut min_heap = std::collections::BinaryHeap::new();
+    min_heap.push(RevState {
+        x,
+        y,
+        time: time,
+        height,
+        width,
+    });
+    let mut checked = std::collections::HashSet::new();
+
+    while let Some(RevState { x, y, time, .. }) = min_heap.pop() {
+        if time + y + x >= *max_min {
+            continue;
+        }
+        if y == 0 && x == 0 {
+            *max_min = time;
+            println!("{}", time);
+            continue;
+        }
+        if !check_exists(zero_state, y, x + 1, width, height, time + 1)
+            && !checked.contains(&(y, x + 1, time + 1))
+        {
+            checked.insert((y, x + 1, time + 1));
+            min_heap.push(RevState {
+                x: x + 1,
+                y,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+        if !check_exists(zero_state, y + 1, x, width, height, time + 1)
+            && !checked.contains(&(y + 1, x, time + 1))
+        {
+            checked.insert((y + 1, x, time + 1));
+
+            min_heap.push(RevState {
+                x,
+                y: y + 1,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+        if !check_exists(zero_state, y, x.wrapping_sub(1), width, height, time + 1)
+            && !checked.contains(&(y, x.wrapping_sub(1), time + 1))
+        {
+            checked.insert((y, x.wrapping_sub(1), time + 1));
+
+            min_heap.push(RevState {
+                x: x.wrapping_sub(1),
+                y,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+
+        if !check_exists(zero_state, y.wrapping_sub(1), x, width, height, time + 1)
+            && !checked.contains(&(y.wrapping_sub(1), x, time + 1))
+        {
+            checked.insert((y.wrapping_sub(1), x, time + 1));
+
+            min_heap.push(RevState {
+                x,
+                y: y.wrapping_sub(1),
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+        if !check_exists(zero_state, y, x, width, height, time + 1)
+            && !checked.contains(&(y, x, time + 1))
+        {
+            checked.insert((y, x, time + 1));
+            min_heap.push(RevState {
+                x,
+                y,
+                time: time + 1,
+                height,
+                width,
+            });
+        }
+    }
+    if *max_min == usize::MAX {
+        find_min_rev(zero_state, y, x, width, height, max_min, time + 1);
+    }
+    *max_min
+}
+
+fn check_exists(
+    zero_state: &Vec<(usize, usize, char)>,
+    y: usize,
+    x: usize,
+    width: usize,
+    height: usize,
+    time: usize,
+) -> bool {
+    x == usize::MAX
+        || y == usize::MAX
+        || x == width
+        || y == height
+        || zero_state.iter().any(|&(y_s, x_s, c)| match c {
+            '>' => y_s == y && x == (x_s + time) % width,
+            '<' => y_s == y && x_s == (x + time) % width,
+            '^' => x_s == x && y_s == (y + time) % height,
+            'v' => x_s == x && y == (y_s + time) % height,
+            _ => unreachable!(),
+        })
 }
