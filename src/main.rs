@@ -12,55 +12,46 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut global_sum = 0;
-    for line in input.lines() {
-        let mut sum = 0;
-        let mut mul = 1;
-        for char in line.chars().rev() {
-            match char {
-                '0' => {}
-                '1' => sum += mul,
-                '2' => sum += 2 * mul,
-                '-' => sum -= mul,
-                '=' => sum -= 2 * mul,
-                _ => unreachable!(),
-            }
-            mul *= 5;
-        }
-        assert!(line == to_special(sum));
-        global_sum += sum;
-    }
-    println!("{}", to_special(global_sum));
-}
+    let value = input
+        .lines()
+        .enumerate()
+        .map(|(index, line)| {
+            let game = line.split_once(": ").unwrap().1;
+            let subsets = game.split("; ");
+            let mut valid = true;
+            let mut min_blue = 0;
+            let mut min_red = 0;
+            let mut min_green = 0;
 
-fn to_special(mut s: i64) -> String {
-    let mut vec = vec![];
-    let mut remainder = 0;
-    while s != 0 {
-        let digit = (s % 5) + remainder;
-        if digit >= 3 {
-            remainder = 1;
-        } else {
-            remainder = 0;
-        }
-        vec.push(match digit {
-            0 => '0',
-            1 => '1',
-            2 => '2',
-            3 => '=',
-            4 => '-',
-            5 => '0',
-            6 => '1',
-            _ => unreachable!(),
-        });
-        s /= 5;
-    }
-    if remainder == 1 {
-        vec.push('1');
-    }
-    vec.reverse();
-    vec.iter().fold(String::new(), |mut s, c| {
-        s.push(*c);
-        s
-    })
+            for set in subsets {
+                let cubes = set.split(", ");
+                for cube in cubes {
+                    let (num, color) = cube.split_once(" ").unwrap();
+                    let num = i32::from_str(num).unwrap();
+                    match color {
+                        "blue" => {
+                            min_blue = min_blue.max(num);
+                            valid &= num <= 14;
+                        }
+                        "green" => {
+                            min_green = min_green.max(num);
+                            valid &= num <= 13;
+                        }
+                        "red" => {
+                            min_red = min_red.max(num);
+                            valid &= num <= 12;
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            min_blue * min_green * min_red
+            // if valid {
+            //     index + 1
+            // } else {
+            //     0
+            // }
+        })
+        .sum::<i32>();
+    println!("{}", value)
 }
