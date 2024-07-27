@@ -13,91 +13,61 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut splitter = input.split("\n\n");
-    let seeds = splitter
-        .next()
-        .unwrap()
-        .split(" ")
-        .skip(1)
-        .map(|s| u64::from_str(s).unwrap());
-    let maps = splitter
-        .map(|s| {
-            s.lines()
+    // (t - x) * x > d
+    // -x^2 +tx - d > 0
+    // (t +- sqrt(t^2 -4d)) / 2
+    let mut iter = input.lines().map(|s| {
+        s.split(" ")
+            .skip(1)
+            .filter(|s| !s.is_empty())
+            .map(|s| u64::from_str(s).unwrap())
+    });
+    let time = iter.next().unwrap();
+    let dist = iter.next().unwrap();
+    let p: u64 = time
+        .zip(dist)
+        .map(|(time, dist)| {
+            let first_intersection =
+                ((time as f64 - ((time * time - 4 * dist) as f64).sqrt()) / 2.).floor() as u64;
+            let second_intersection =
+                ((time as f64 + ((time * time - 4 * dist) as f64).sqrt()) / 2.).ceil() as u64;
+            let mut diff = second_intersection - first_intersection + 1;
+            if (time - first_intersection) * first_intersection <= dist {
+                diff -= 1
+            }
+            if (time - second_intersection) * second_intersection <= dist {
+                diff -= 1
+            }
+            diff
+        })
+        .product();
+    println!("{}", p);
+    let mut iter2 = input.lines().map(|s| {
+        u64::from_str(
+            s.split(" ")
                 .skip(1)
-                .map(|s| {
-                    s.split(" ")
-                        .map(|s| u64::from_str(s).unwrap())
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-
-    let min = seeds
-        .clone()
-        .map(|seed| {
-            let mut current = seed;
-            for map in &maps {
-                current = map
-                    .iter()
-                    .find(|s| (s[1]..s[1] + s[2]).contains(&current))
-                    .map_or(current, |s| s[0] + current - s[1]);
-            }
-            // println!("{}", current);
-            current
-        })
-        .min()
-        .unwrap();
-    let mut splitter = input.split("\n\n");
-
-    let new_seeds = splitter
-        .next()
+                .filter(|s| !s.is_empty())
+                .fold(String::new(), |acc, s| acc + s)
+                .as_str(),
+        )
         .unwrap()
-        .split(" ")
-        .skip(1)
-        .map(|s| u64::from_str(s).unwrap())
-        .collect::<Vec<_>>();
-    let mut new_seeds: Vec<[u64; 2]> = new_seeds
-        .windows(2)
-        .step_by(2)
-        .map(|s| [s[0], s[1]])
-        .collect::<Vec<_>>();
-    let first_sum = new_seeds.iter().map(|s| s[1]).sum::<u64>();
-    for map in &maps {
-        assert_eq!(new_seeds.iter().map(|s| s[1]).sum::<u64>(), first_sum);
-        let mut new_seeds_spliced = vec![];
-        for seed in &new_seeds {
-            let mut points_in_segment = vec![seed[0], seed[0] + seed[1]];
-            let mut found_map = false;
-            for specific_map in map {
-                if (seed[0]..seed[0] + seed[1]).contains(&specific_map[1]) {
-                    points_in_segment.push(specific_map[1]);
-                } else if (seed[0]..seed[0] + seed[1])
-                    .contains(&(specific_map[1] + specific_map[2]))
-                {
-                    points_in_segment.push(specific_map[1] + specific_map[2]);
-                }
-            }
-            points_in_segment.sort();
-            points_in_segment.dedup();
-            for window in points_in_segment.windows(2) {
-                new_seeds_spliced.push([window[0], window[1] - window[0]]);
-            }
-        }
-        assert_eq!(new_seeds_spliced.iter().map(|s| s[1]).sum::<u64>(), first_sum);
-        new_seeds.clear();
-        new_seeds = new_seeds_spliced
-            .iter()
-            .map(|s| {
-                map.iter()
-                    .find(|map| (map[1]..map[1] + map[2]).contains(&s[0]))
-                    .map_or(*s, |map| {
-                        [s[0] - map[1] + map[0], s[1]]
-                    })
-            })
-            .collect();
-        }
+    });
+    let time = iter2.next().unwrap();
+    let dist = iter2.next().unwrap();
 
-    println!("{}", min);
-    println!("{}", new_seeds.iter().min().unwrap()[0]);
+    let p: u64 = {
+        let first_intersection =
+            ((time as f64 - ((time * time - 4 * dist) as f64).sqrt()) / 2.).floor() as u64;
+        let second_intersection =
+            ((time as f64 + ((time * time - 4 * dist) as f64).sqrt()) / 2.).ceil() as u64;
+        let mut diff = second_intersection - first_intersection + 1;
+        if (time - first_intersection) * first_intersection <= dist {
+            diff -= 1
+        }
+        if (time - second_intersection) * second_intersection <= dist {
+            diff -= 1
+        }
+        diff
+    };
+    println!("{}", p);
 }
