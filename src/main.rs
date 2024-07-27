@@ -13,61 +13,95 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    // (t - x) * x > d
-    // -x^2 +tx - d > 0
-    // (t +- sqrt(t^2 -4d)) / 2
-    let mut iter = input.lines().map(|s| {
-        s.split(" ")
-            .skip(1)
-            .filter(|s| !s.is_empty())
-            .map(|s| u64::from_str(s).unwrap())
-    });
-    let time = iter.next().unwrap();
-    let dist = iter.next().unwrap();
-    let p: u64 = time
-        .zip(dist)
-        .map(|(time, dist)| {
-            let first_intersection =
-                ((time as f64 - ((time * time - 4 * dist) as f64).sqrt()) / 2.).floor() as u64;
-            let second_intersection =
-                ((time as f64 + ((time * time - 4 * dist) as f64).sqrt()) / 2.).ceil() as u64;
-            let mut diff = second_intersection - first_intersection + 1;
-            if (time - first_intersection) * first_intersection <= dist {
-                diff -= 1
-            }
-            if (time - second_intersection) * second_intersection <= dist {
-                diff -= 1
-            }
-            diff
+    let mut vec = input
+        .lines()
+        .map(|s| {
+            let a = s.split_once(" ").unwrap();
+            (
+                a.0.chars()
+                    .map(|c| {
+                        vec![
+                            'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
+                        ]
+                        .iter()
+                        .position(|a| *a == c)
+                        .map(|i| 12 - i)
+                        .unwrap()
+                    })
+                    .collect::<Vec<_>>(),
+                u64::from_str(a.1).unwrap(),
+            )
         })
-        .product();
-    println!("{}", p);
-    let mut iter2 = input.lines().map(|s| {
-        u64::from_str(
-            s.split(" ")
-                .skip(1)
-                .filter(|s| !s.is_empty())
-                .fold(String::new(), |acc, s| acc + s)
-                .as_str(),
-        )
-        .unwrap()
+        .collect::<Vec<_>>();
+    vec.sort_by(|a, b| {
+        let ordering = max_hand_type(&a.0).cmp(&max_hand_type(&b.0));
+        if ordering == Ordering::Equal {
+            a.0.cmp(&b.0)
+        } else {
+            ordering
+        }
     });
-    let time = iter2.next().unwrap();
-    let dist = iter2.next().unwrap();
+    let s = vec
+        .iter()
+        .enumerate()
+        .map(|s| (s.0 as u64 + 1) * s.1 .1)
+        .sum::<u64>();
+    for line in vec {
+        println!("{:?}", line);
+    }
+    println!("{:?}", s);
+}
 
-    let p: u64 = {
-        let first_intersection =
-            ((time as f64 - ((time * time - 4 * dist) as f64).sqrt()) / 2.).floor() as u64;
-        let second_intersection =
-            ((time as f64 + ((time * time - 4 * dist) as f64).sqrt()) / 2.).ceil() as u64;
-        let mut diff = second_intersection - first_intersection + 1;
-        if (time - first_intersection) * first_intersection <= dist {
-            diff -= 1
-        }
-        if (time - second_intersection) * second_intersection <= dist {
-            diff -= 1
-        }
-        diff
-    };
-    println!("{}", p);
+fn max_hand_type(s: &Vec<usize>) -> i64 {
+    (1..13)
+        .map(|c| {
+            let mut k = s.clone();
+            k.iter_mut().for_each(|l| {
+                if *l == 0 {
+                    *l = c
+                }
+            });
+            hand_type(&k)
+        })
+        .max()
+        .unwrap()
+}
+
+fn hand_type(s: &Vec<usize>) -> i64 {
+    let mut vec = s.clone();
+    vec.sort();
+    let mut current_num = 0;
+    let mut positions = vec
+        .windows(2)
+        .map(|s| s[0] == s[1])
+        .enumerate()
+        .filter_map(|s| (!s.1).then_some(s.0 + 1))
+        .collect::<Vec<_>>();
+    positions.push(0);
+    positions.push(vec.len());
+    positions.sort();
+    let mut lengths = positions
+        .windows(2)
+        .map(|s| s[1] - s[0])
+        .collect::<Vec<_>>();
+    lengths.sort_by_key(|s| -(*s as i64));
+    if lengths[0] == 5 {
+        return 27;
+    }
+    if lengths[0] == 4 {
+        return 26;
+    }
+    if lengths[0] == 3 && lengths[1] == 2 {
+        return 25;
+    }
+    if lengths[0] == 3 {
+        return 24;
+    }
+    if lengths[0] == 2 && lengths[1] == 2 {
+        return 23;
+    }
+    if lengths[0] == 2 {
+        return 22;
+    }
+    return 21;
 }
