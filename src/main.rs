@@ -13,95 +13,97 @@ use std::{
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut vec = input
-        .lines()
-        .map(|s| {
-            let a = s.split_once(" ").unwrap();
-            (
-                a.0.chars()
-                    .map(|c| {
-                        vec![
-                            'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
-                        ]
-                        .iter()
-                        .position(|a| *a == c)
-                        .map(|i| 12 - i)
-                        .unwrap()
-                    })
-                    .collect::<Vec<_>>(),
-                u64::from_str(a.1).unwrap(),
-            )
-        })
-        .collect::<Vec<_>>();
-    vec.sort_by(|a, b| {
-        let ordering = max_hand_type(&a.0).cmp(&max_hand_type(&b.0));
-        if ordering == Ordering::Equal {
-            a.0.cmp(&b.0)
-        } else {
-            ordering
-        }
-    });
-    let s = vec
-        .iter()
-        .enumerate()
-        .map(|s| (s.0 as u64 + 1) * s.1 .1)
-        .sum::<u64>();
-    for line in vec {
-        println!("{:?}", line);
-    }
-    println!("{:?}", s);
-}
-
-fn max_hand_type(s: &Vec<usize>) -> i64 {
-    (1..13)
-        .map(|c| {
-            let mut k = s.clone();
-            k.iter_mut().for_each(|l| {
-                if *l == 0 {
-                    *l = c
-                }
-            });
-            hand_type(&k)
-        })
-        .max()
+    let mut lines = input.lines();
+    let mut order = lines
+        .next()
         .unwrap()
+        .chars()
+        .map(|c| {
+            if c == 'R' {
+                1
+            } else if c == 'L' {
+                0
+            } else {
+                panic!()
+            }
+        })
+        .cycle();
+    lines.next();
+    let map = lines
+        .map(|line| {
+            let (key, pair) = line.split_once(" = (").unwrap();
+            let (left, right) = pair.split_once(", ").unwrap();
+            let right = right.split_once(")").unwrap().0;
+            (key, left, right)
+        })
+        .fold(HashMap::new(), |mut acc, (key, left, right)| {
+            acc.insert(key, (left, right));
+            acc
+        });
+    // let mut current = "AAA";
+    // let mut count = 0;
+    // while current != "ZZZ" {
+    //     let key = order.next().unwrap();
+    //     let pair = map[current];
+    //     if key == 0 {
+    //         current = pair.0;
+    //     } else {
+    //         current = pair.1;
+    //     }
+    //     count += 1;
+    // }
+    // println!("{}", count);
+    let mut lines = input.lines();
+    let mut order = lines
+        .next()
+        .unwrap()
+        .chars()
+        .map(|c| {
+            if c == 'R' {
+                1
+            } else if c == 'L' {
+                0
+            } else {
+                panic!()
+            }
+        })
+        .cycle();
+    let mut current = vec![];
+    for key in map.keys() {
+        if key.ends_with("A") {
+            current.push(*key);
+        }
+    }
+    let mut count = 0;
+    let mut minhit = vec![u64::MAX; current.len()];
+    while !current.iter().all(|s| s.ends_with("Z")) {
+        let key = order.next().unwrap();
+        count += 1;
+        current.iter_mut().enumerate().for_each(|(index, current)| {
+            let pair = map[*current];
+            if key == 0 {
+                *current = pair.0;
+            } else {
+                *current = pair.1;
+            }
+            if current.ends_with("Z") {
+                minhit[index] = minhit[index].min(count);
+            }
+        });
+        if minhit.iter().all(|count| *count != u64::MAX) {
+            break;
+        }
+    }
+    let lcm = minhit.iter().fold(1, |acc, b| acc * *b / gcd(acc, *b));
+    println!("{}", lcm);
 }
 
-fn hand_type(s: &Vec<usize>) -> i64 {
-    let mut vec = s.clone();
-    vec.sort();
-    let mut current_num = 0;
-    let mut positions = vec
-        .windows(2)
-        .map(|s| s[0] == s[1])
-        .enumerate()
-        .filter_map(|s| (!s.1).then_some(s.0 + 1))
-        .collect::<Vec<_>>();
-    positions.push(0);
-    positions.push(vec.len());
-    positions.sort();
-    let mut lengths = positions
-        .windows(2)
-        .map(|s| s[1] - s[0])
-        .collect::<Vec<_>>();
-    lengths.sort_by_key(|s| -(*s as i64));
-    if lengths[0] == 5 {
-        return 27;
+fn gcd(a: u64, b: u64) -> u64 {
+    if a < b {
+        return gcd(b, a);
     }
-    if lengths[0] == 4 {
-        return 26;
+    if b == 0 {
+        return a
     }
-    if lengths[0] == 3 && lengths[1] == 2 {
-        return 25;
-    }
-    if lengths[0] == 3 {
-        return 24;
-    }
-    if lengths[0] == 2 && lengths[1] == 2 {
-        return 23;
-    }
-    if lengths[0] == 2 {
-        return 22;
-    }
-    return 21;
+    gcd(b, a.rem_euclid(b))
 }
