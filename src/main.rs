@@ -1,6 +1,7 @@
 use std::{
     cmp::Reverse,
     collections::{BinaryHeap, HashMap},
+    iter::Cycle,
 };
 
 fn main() {
@@ -9,76 +10,39 @@ fn main() {
         .lines()
         .map(|c| c.chars().collect::<Vec<_>>())
         .collect::<Vec<_>>();
-    let mut min_dist = HashMap::new();
-    let mut wavefront = BinaryHeap::new();
-    let start = map
+    let empty_y = map
         .iter()
         .enumerate()
-        .find_map(|(y, line)| {
-            line.iter()
-                .enumerate()
-                .find(|(x, &c)| c == 'S')
-                .map(|(x, c)| (y, x))
-        })
-        .unwrap();
-    wavefront.push((Reverse(0), start.0, start.1));
-    let mut options = HashMap::new();
-    options.insert('|', vec![[1, 0], [-1, 0]]);
-    options.insert('-', vec![[0, 1], [0, -1]]);
-    options.insert('L', vec![[-1, 0], [0, 1]]);
-    options.insert('J', vec![[-1, 0], [0, -1]]);
-    options.insert('7', vec![[1, 0], [0, -1]]);
-    options.insert('F', vec![[1, 0], [0, 1]]);
-    options.insert('.', vec![]);
-    options.insert('S', vec![[1, 0], [0, 1], [-1, 0], [0, -1]]);
-
-    while !wavefront.is_empty() {
-        let (dist, y, x) = wavefront.pop().unwrap();
-        let pipe = map[y][x];
-        if min_dist.contains_key(&(y, x)) {
-            continue;
-        }
-        min_dist.insert((y, x), dist);
-        let Some(specific_options) = options.get(&pipe) else {
-            continue;
-        };
-        for option in specific_options {
-            let new_y = y.wrapping_add(option[0] as usize);
-            let new_x = x.wrapping_add(option[1] as usize);
-            if new_y < map.len() && new_x < map[0].len() {
-                if options[&map[new_y][new_x]].contains(&[-option[0], -option[1]]) {
-                    wavefront.push((Reverse(dist.0 + 1), new_y, new_x));
-                }
-            }
+        .map(|(y, v)| (y, v.iter().all(|c| *c == '.')))
+        .filter_map(|(y, b)| b.then_some(y))
+        .collect::<Vec<_>>();
+    let empty_x = (0..map[0].len())
+        .map(|x| (x, map.iter().all(|v| v[x] == '.')))
+        .filter_map(|(x, b)| b.then_some(x))
+        .collect::<Vec<usize>>();
+    let position_galaxies = map
+        .iter()
+        .enumerate()
+        .flat_map(|(y, v)| std::iter::once(y).cycle().zip(v.iter().enumerate()))
+        .filter_map(|(y, (x, c))| (*c == '#').then_some((y, x)))
+        .collect::<Vec<_>>();
+    let mut sum = 0;
+    let mut sum2 = 0;
+    for &(y0, x0) in &position_galaxies {
+        for &(y1, x1) in &position_galaxies {
+            let count_empty_x_between = empty_x
+                .iter()
+                .filter(|x| x.abs_diff(x0) + x.abs_diff(x1) == x0.abs_diff(x1))
+                .count();
+            let count_empty_y_between = empty_y
+                .iter()
+                .filter(|y| y.abs_diff(y0) + y.abs_diff(y1) == y0.abs_diff(y1))
+                .count();
+            sum +=
+                x0.abs_diff(x1) + count_empty_x_between + y0.abs_diff(y1) + count_empty_y_between;
+            sum2 += x0.abs_diff(x1) + count_empty_x_between*(1000000-1) + y0.abs_diff(y1) + count_empty_y_between*(1000000-1);
         }
     }
-    let mut count = 0;
-    for y in 0..map.len() {
-        let mut polarity = 0;
-        let mut last_up = None;
-        for x in 0..map[0].len() {
-            if let Some(dist) = min_dist.get(&(y, x)) {
-                let connected_up = min_dist
-                    .get(&(y.wrapping_sub(1), x))
-                    .map_or(false, |v| (dist.0 as i32).abs_diff(v.0 as i32) == 1);
-                let connected_down = min_dist
-                    .get(&(y + 1, x))
-                    .map_or(false, |v| (dist.0 as i32).abs_diff(v.0 as i32) == 1);
-                if connected_up && connected_down {
-                    polarity ^= 1;
-                } else if last_up.is_none() {
-                    last_up = Some(connected_up);
-                } else if connected_down || connected_up {
-                    if last_up != Some(connected_up) {
-                        polarity ^= 1;
-                    }
-                }
-            } else if polarity == 1 {
-                count += 1;
-            }
-        }
-    }
-    let max = min_dist.values().min().unwrap();
-    println!("{}", max.0);
-    println!("{}", count);
+    println!("{}", sum / 2);
+    println!("{}", sum2 / 2);
 }
