@@ -1,54 +1,118 @@
 use core::num;
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, HashSet},
     fmt::Write,
     hash::Hash,
     iter::Cycle,
     str::FromStr,
 };
 
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+struct Beam {
+    x: usize,
+    y: usize,
+    vx: i32,
+    vy: i32,
+}
+
 fn main() {
     let input = include_str!("input.txt");
-    println!(
-        "{}",
-        input
-            .split(',')
-            .map(|s| { s.bytes().fold(0, |s, b| ((s as u32 + b as u32) * 17) % 256) })
-            .sum::<u32>()
-    );
-    let mut lenses = vec![vec![]; 256];
-    input.split(',').for_each(|s| {
-        if s.contains('=') {
-            let (label, lens) = s.split_once('=').unwrap();
-            let hash = label
-                .bytes()
-                .fold(0, |s, b| ((s as u32 + b as u32) * 17) % 256);
-            if let Some((_, a)) = lenses[hash as usize].iter_mut().find(|(s, _)| *s == label) {
-                *a = i64::from_str(lens).unwrap();
-            } else {
-                lenses[hash as usize].push((label, i64::from_str(lens).unwrap()));
-            }
+    let map = input
+        .lines()
+        .map(|s| s.chars().collect())
+        .collect::<Vec<Vec<_>>>();
+    let mut max = 0;
+    for y in 0..map.len() {
+        let beams = vec![Beam {
+            x: 0,
+            y,
+            vx: 1,
+            vy: 0,
+        }];
+        max = max.max(calc_energized(&map, beams));
+        let beams = vec![Beam {
+            x: map[0].len() - 1,
+            y,
+            vx: -1,
+            vy: 0,
+        }];
+        max = max.max(calc_energized(&map, beams));
+    }
+    for x in 0..map[0].len() {
+        let beams = vec![Beam {
+            x,
+            y: 0,
+            vx: 0,
+            vy: 1,
+        }];
+        max = max.max(calc_energized(&map, beams));
+        let beams = vec![Beam {
+            x,
+            y: map.len() - 1,
+            vx: 0,
+            vy: -1,
+        }];
+        max = max.max(calc_energized(&map, beams));
+    }
+    println!("{}", max);
+}
+
+fn calc_energized(map: &Vec<Vec<char>>, mut beams: Vec<Beam>) -> u32 {
+    let mut happened = HashSet::new();
+    let mut energized = vec![vec![false; map[0].len()]; map.len()];
+    let push_if_possible = |beams: &mut Vec<_>, x, y, vx, vy| {
+        let nx = ((x as i32) + vx) as usize;
+        let ny = ((y as i32) + vy) as usize;
+        if nx >= map[0].len() || ny >= map.len() {
+            return;
         }
-        if s.contains('-') {
-            let label = s.trim_end_matches('-');
-            let hash = label
-                .bytes()
-                .fold(0, |s, b| ((s as u32 + b as u32) * 17) % 256);
-            if let Some(pos) = lenses[hash as usize].iter().position(|(s, _)| *s == label) {
-                lenses[hash as usize].remove(pos);
-            }
+        beams.push(Beam {
+            x: nx,
+            y: ny,
+            vx,
+            vy,
+        });
+    };
+    while !beams.is_empty() {
+        let beam = beams.pop().unwrap();
+        if happened.contains(&beam) {
+            continue;
         }
-    });
-    let res = lenses
+        happened.insert(beam);
+        energized[beam.y][beam.x] = true;
+        match map[beam.y][beam.x] {
+            '/' => {
+                push_if_possible(&mut beams, beam.x, beam.y, -beam.vy, -beam.vx);
+            }
+            '\\' => {
+                push_if_possible(&mut beams, beam.x, beam.y, beam.vy, beam.vx);
+            }
+            '|' => {
+                if beam.vx != 0 {
+                    push_if_possible(&mut beams, beam.x, beam.y, 0, 1);
+                    push_if_possible(&mut beams, beam.x, beam.y, 0, -1);
+                } else {
+                    push_if_possible(&mut beams, beam.x, beam.y, 0, beam.vy);
+                }
+            }
+            '-' => {
+                if beam.vy != 0 {
+                    push_if_possible(&mut beams, beam.x, beam.y, 1, 0);
+                    push_if_possible(&mut beams, beam.x, beam.y, -1, 0);
+                } else {
+                    push_if_possible(&mut beams, beam.x, beam.y, beam.vx, 0);
+                }
+            }
+            '.' => {
+                push_if_possible(&mut beams, beam.x, beam.y, beam.vx, beam.vy);
+            }
+            _ => unreachable!(),
+        }
+    }
+    let res = energized
         .iter()
-        .enumerate()
-        .map(|(i, v)| {
-            v.iter()
-                .enumerate()
-                .map(|(pos, (_, a))| (pos + 1) as i32 * (i + 1) as i32 * *a as i32)
-                .sum::<i32>()
-        })
-        .sum::<i32>();
-    println!("{}", res);
+        .map(|v| v.iter().map(|b| *b as u32).sum::<u32>())
+        .sum::<u32>();
+    res
 }
