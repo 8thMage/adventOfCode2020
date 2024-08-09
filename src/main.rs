@@ -1,145 +1,102 @@
 use core::num;
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
     fmt::Write,
     hash::Hash,
     iter::Cycle,
     str::FromStr,
 };
 
-struct Rule {
-    check: &'static str,
-    bge: bool,
-    amount: u64,
-    next: &'static str,
+#[derive(PartialEq)]
+enum Type {
+    Broadcast,
+    FlipFlop,
+    Conjuction,
 }
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut lines = input.lines();
-    let mut all_rules = HashMap::new();
-    for line in lines.by_ref() {
-        if line.is_empty() {
-            break;
-        }
-        let (name, rules) = line.split_once("{").unwrap();
-        let rules = rules.trim_end_matches('}');
-        let rules = rules
-            .split(",")
-            .map(|s| {
-                if let Some((a, b)) = s.split_once(':') {
-                    if a.contains('<') {
-                        let (check, max) = a.split_once('<').unwrap();
-                        Rule {
-                            check: check,
-                            bge: false,
-                            amount: u64::from_str(max).unwrap(),
-                            next: b,
-                        }
-                    } else {
-                        let (check, max) = a.split_once('>').unwrap();
-                        Rule {
-                            check: check,
-                            bge: true,
-                            amount: u64::from_str(max).unwrap(),
-                            next: b,
-                        }
-                    }
-                } else {
-                    Rule {
-                        check: "x",
-                        bge: false,
-                        amount: u64::MAX,
-                        next: s,
-                    }
-                }
-            })
-            .collect::<Vec<_>>();
-        all_rules.insert(name, rules);
+    let mut rules = HashMap::new();
+    let mut conjuction_inputs = HashMap::new();
+    for line in input.lines() {
+        let (signal, dest) = line.split_once(" -> ").unwrap();
+        let vec = dest.split(", ").collect::<Vec<_>>();
+        let (signal_type, name) = match signal.chars().next().unwrap() {
+            '%' => (Type::FlipFlop, &signal[1..]),
+            '&' => (Type::Conjuction, &signal[1..]),
+            _ => (Type::Broadcast, signal),
+        };
+        rules.insert(name, (signal_type, vec));
     }
-    let mut sum = 0;
-    for line in lines {
-        let line = line.trim_end_matches('}');
-        let line = line.trim_end_matches('{');
-        let part = line
-            .split(',')
-            .map(|s| u64::from_str(s.split_once('=').unwrap().1).unwrap())
-            .collect::<Vec<_>>();
-        let mut current_rule = "in";
-        'l: loop {
-            let current_rule_vec = &all_rules[current_rule];
-            for rule in current_rule_vec {
-                let index = match rule.check {
-                    "x" => 0,
-                    "m" => 1,
-                    "a" => 2,
-                    "s" => 3,
-                    _ => unreachable!(),
-                };
-                let part_amount = part[index];
-                let accept = if rule.bge {
-                    part_amount > rule.amount
-                } else {
-                    part_amount < rule.amount
-                };
-                if accept {
-                    if rule.next == "R" {
-                        break 'l;
-                    }
-                    if rule.next == "A" {
-                        sum += part.iter().sum::<u64>();
-                        break 'l;
-                    }
-                    current_rule = rule.next;
-                    continue 'l;
-                }
+    for (key, conj) in rules.iter_mut().filter(|(a, b)| b.0 == Type::Conjuction) {
+        conjuction_inputs.insert(key.clone(), HashMap::new());
+    }
+
+    for (key, conj) in rules.iter() {
+        for dest in conj.1.iter() {
+            if conjuction_inputs.contains_key(dest) {
+                conjuction_inputs.get_mut(dest).unwrap().insert(key, false);
             }
         }
     }
-    println!("{}", sum);
-    println!(
-        "{}",
-        calculate_combinations(vec![(1, 4000); 4], &all_rules, "in")
-    );
-}
-
-fn calculate_combinations(
-    mut parts: Vec<(u64, u64)>,
-    rules: &HashMap<&'static str, Vec<Rule>>,
-    current_rule: &str,
-) -> u64 {
-    if parts.iter().any(|(a, b)| b < a) {
-        return 0;
+    let mut signal_current = HashMap::new();
+    let mut count_high = 0;
+    let mut count_low = 0;
+    let mut next_to_calc = VecDeque::new();
+    let mut index = 0;
+    loop {
+        index += 1;
+        if index % 100000 == 0 {
+            println!("heartbeat {}", index);
+        }
+        next_to_calc.push_back(("button", "broadcaster", false));
+        while let Some((source, signal, high)) = next_to_calc.pop_front() {
+            if high {
+                count_high += 1;
+            } else {
+                count_low += 1;
+            }
+            if signal == "ls" && high {
+                println!("{} {} {}", index, source, high);
+            }
+            if signal == "rx" {
+                if !high {
+                    println!("{}", index - 1);
+                    return;
+                }
+            }
+            let Some((signal_type, dest)) = rules.get(&signal) else {
+                continue;
+            };
+            let next_signal = match signal_type {
+                Type::Broadcast => {
+                    for dest in dest {
+                        next_to_calc.push_back((signal, dest, high));
+                    }
+                }
+                Type::FlipFlop => {
+                    if !high {
+                        let entry = signal_current.entry(signal).or_insert(false);
+                        *entry = !*entry;
+                        for dest in dest {
+                            next_to_calc.push_back((signal, dest, *entry));
+                        }
+                    }
+                }
+                Type::Conjuction => {
+                    *conjuction_inputs
+                        .get_mut(&signal)
+                        .unwrap()
+                        .get_mut(&source)
+                        .unwrap() = high;
+                    let res = conjuction_inputs.get(&signal).unwrap().values().all(|s| *s);
+                    for dest in dest {
+                        next_to_calc.push_back((signal, dest, !res));
+                    }
+                }
+            };
+        }
     }
-    if current_rule == "R" {
-        return 0;
-    }
-    if current_rule == "A" {
-        return parts.iter().map(|(a, b)| b - a + 1).product::<u64>();
-    }
-    let current_rule_vec = &rules[current_rule];
-    let mut sum = 0;
-    for rule in current_rule_vec {
-        let index = match rule.check {
-            "x" => 0,
-            "m" => 1,
-            "a" => 2,
-            "s" => 3,
-            _ => unreachable!(),
-        };
-        let current_part = if rule.bge {
-            let mut curr = parts.clone();
-            curr[index].0 = (rule.amount + 1).max(curr[index].0);
-            parts[index].1 = curr[index].0-1;
-            curr
-        } else {
-            let mut curr = parts.clone();
-            curr[index].1 = (rule.amount - 1).min(curr[index].1);
-            parts[index].0 = curr[index].1 + 1;
-            curr
-        };
-        sum += calculate_combinations(current_part, rules, &rule.next);
-    }
-    return sum;
+    println!("{}", count_high * count_low);
 }
