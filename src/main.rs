@@ -8,86 +8,138 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
-struct Entry {
-    x: usize,
-    y: usize,
-    amount_moved_forward: usize,
-    direction_forward: (i64, i64),
-    cost: usize,
-}
-
-impl Entry {
-    fn heuristic(&self) -> i64 {
-        self.cost as i64 - self.x as i64 - self.y as i64
-    }
-}
-
-impl PartialOrd for Entry {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(
-            (self.cost as i64 - self.x as i64 - self.y as i64)
-                .cmp(&(other.cost as i64 - other.x as i64 - other.y as i64))
-                .reverse(),
-        )
-    }
-}
-
-impl Ord for Entry {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (self.cost as i64 - self.x as i64 - self.y as i64)
-            .cmp(&(other.cost as i64 - other.x as i64 - other.y as i64))
-            .reverse()
-    }
+struct Rule {
+    check: &'static str,
+    bge: bool,
+    amount: u64,
+    next: &'static str,
 }
 
 fn main() {
     let input = include_str!("input.txt");
-    let mut current_point = (0, 0);
-    let mut current_point_2 = (0, 0);
-    let mut current_sum: i64 = 0;
-    let mut current_sum_2: i64 = 0;
-    let mut count = 0;
-    let mut count_2 = 0;
-    for line in input.lines() {
-        let (dir, (amount, color)) = line
-            .split_once(' ')
-            .map(|(a, b)| (a, b.split_once(' ').unwrap()))
-            .unwrap();
-        let delta = match dir {
-            "D" => (0, 1),
-            "U" => (0, -1),
-            "L" => (-1, 0),
-            "R" => (1, 0),
-            _ => unreachable!(),
-        };
-        for _ in 0..usize::from_str_radix(amount, 10).unwrap() {
-            count += 1;
-            let next_point_x = current_point.0 + delta.0;
-            let next_point_y = current_point.1 + delta.1;
-            current_sum += (next_point_y + current_point.1) * (next_point_x - current_point.0) / 2;
-            current_point = (next_point_x, next_point_y);
+    let mut lines = input.lines();
+    let mut all_rules = HashMap::new();
+    for line in lines.by_ref() {
+        if line.is_empty() {
+            break;
         }
-        let amount = u64::from_str_radix(&color[2..2 + 5], 16).unwrap();
-        let dir = u64::from_str_radix(&color[2 + 5..2 + 5 + 1], 16).unwrap();
-        let delta = match dir {
-            1 => (0, 1),
-            3 => (0, -1),
-            2 => (-1, 0),
-            0 => (1, 0),
+        let (name, rules) = line.split_once("{").unwrap();
+        let rules = rules.trim_end_matches('}');
+        let rules = rules
+            .split(",")
+            .map(|s| {
+                if let Some((a, b)) = s.split_once(':') {
+                    if a.contains('<') {
+                        let (check, max) = a.split_once('<').unwrap();
+                        Rule {
+                            check: check,
+                            bge: false,
+                            amount: u64::from_str(max).unwrap(),
+                            next: b,
+                        }
+                    } else {
+                        let (check, max) = a.split_once('>').unwrap();
+                        Rule {
+                            check: check,
+                            bge: true,
+                            amount: u64::from_str(max).unwrap(),
+                            next: b,
+                        }
+                    }
+                } else {
+                    Rule {
+                        check: "x",
+                        bge: false,
+                        amount: u64::MAX,
+                        next: s,
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+        all_rules.insert(name, rules);
+    }
+    let mut sum = 0;
+    for line in lines {
+        let line = line.trim_end_matches('}');
+        let line = line.trim_end_matches('{');
+        let part = line
+            .split(',')
+            .map(|s| u64::from_str(s.split_once('=').unwrap().1).unwrap())
+            .collect::<Vec<_>>();
+        let mut current_rule = "in";
+        'l: loop {
+            let current_rule_vec = &all_rules[current_rule];
+            for rule in current_rule_vec {
+                let index = match rule.check {
+                    "x" => 0,
+                    "m" => 1,
+                    "a" => 2,
+                    "s" => 3,
+                    _ => unreachable!(),
+                };
+                let part_amount = part[index];
+                let accept = if rule.bge {
+                    part_amount > rule.amount
+                } else {
+                    part_amount < rule.amount
+                };
+                if accept {
+                    if rule.next == "R" {
+                        break 'l;
+                    }
+                    if rule.next == "A" {
+                        sum += part.iter().sum::<u64>();
+                        break 'l;
+                    }
+                    current_rule = rule.next;
+                    continue 'l;
+                }
+            }
+        }
+    }
+    println!("{}", sum);
+    println!(
+        "{}",
+        calculate_combinations(vec![(1, 4000); 4], &all_rules, "in")
+    );
+}
+
+fn calculate_combinations(
+    mut parts: Vec<(u64, u64)>,
+    rules: &HashMap<&'static str, Vec<Rule>>,
+    current_rule: &str,
+) -> u64 {
+    if parts.iter().any(|(a, b)| b < a) {
+        return 0;
+    }
+    if current_rule == "R" {
+        return 0;
+    }
+    if current_rule == "A" {
+        return parts.iter().map(|(a, b)| b - a + 1).product::<u64>();
+    }
+    let current_rule_vec = &rules[current_rule];
+    let mut sum = 0;
+    for rule in current_rule_vec {
+        let index = match rule.check {
+            "x" => 0,
+            "m" => 1,
+            "a" => 2,
+            "s" => 3,
             _ => unreachable!(),
         };
-        count_2 += amount as i64;
-        let next_point_x = current_point_2.0 + delta.0 * amount as i64;
-        let next_point_y = current_point_2.1 + delta.1 * amount as i64;
-        current_sum_2 +=
-            (next_point_y + current_point_2.1) * (next_point_x - current_point_2.0) / 2;
-        current_point_2 = (next_point_x, next_point_y);
+        let current_part = if rule.bge {
+            let mut curr = parts.clone();
+            curr[index].0 = (rule.amount + 1).max(curr[index].0);
+            parts[index].1 = curr[index].0-1;
+            curr
+        } else {
+            let mut curr = parts.clone();
+            curr[index].1 = (rule.amount - 1).min(curr[index].1);
+            parts[index].0 = curr[index].1 + 1;
+            curr
+        };
+        sum += calculate_combinations(current_part, rules, &rule.next);
     }
-    current_sum += (0 + current_point.1) * (0 - current_point.0) / 2;
-    current_sum = current_sum.abs() + count / 2 + 1;
-    println!("{}", current_sum);
-    current_sum_2 += (0 + current_point_2.1) * (0 - current_point_2.0) / 2;
-    current_sum_2 = current_sum_2.abs() + count_2 / 2 + 1;
-    println!("{}", current_sum_2);
+    return sum;
 }
