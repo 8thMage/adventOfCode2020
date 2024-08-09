@@ -43,116 +43,51 @@ impl Ord for Entry {
 
 fn main() {
     let input = include_str!("input.txt");
-    let map = input
-        .lines()
-        .map(|s| s.chars().map(|c| c as usize - '0' as usize).collect())
-        .collect::<Vec<Vec<_>>>();
-    let current_position = (0, 0);
-    let mut histories = BinaryHeap::new();
-    histories.push(Entry {
-        x: 0,
-        y: 0,
-        amount_moved_forward: 0,
-        direction_forward: (1, 0),
-        cost: 0,
-    });
-    let mut cost_to = HashMap::new();
-    let mut min_cost = usize::MAX;
-    while let Some(history) = histories.pop() {
-        if history.y >= map.len() || history.x >= map[0].len() {
-            continue;
+    let mut current_point = (0, 0);
+    let mut current_point_2 = (0, 0);
+    let mut current_sum: i64 = 0;
+    let mut current_sum_2: i64 = 0;
+    let mut count = 0;
+    let mut count_2 = 0;
+    for line in input.lines() {
+        let (dir, (amount, color)) = line
+            .split_once(' ')
+            .map(|(a, b)| (a, b.split_once(' ').unwrap()))
+            .unwrap();
+        let delta = match dir {
+            "D" => (0, 1),
+            "U" => (0, -1),
+            "L" => (-1, 0),
+            "R" => (1, 0),
+            _ => unreachable!(),
+        };
+        for _ in 0..usize::from_str_radix(amount, 10).unwrap() {
+            count += 1;
+            let next_point_x = current_point.0 + delta.0;
+            let next_point_y = current_point.1 + delta.1;
+            current_sum += (next_point_y + current_point.1) * (next_point_x - current_point.0) / 2;
+            current_point = (next_point_x, next_point_y);
         }
-        if cost_to
-            .get(&(
-                history.x,
-                history.y,
-                history.direction_forward,
-                history.amount_moved_forward,
-            ))
-            .map_or(false, |c| *c <= history.cost)
-        {
-            continue;
-        }
-        if min_cost < history.cost {
-            // break;
-            continue;
-        }
-        if history.y == map.len() - 1 && history.x == map[0].len() - 1 {
-            min_cost = (history.cost + map[history.y][history.x] - map[0][0]).min(min_cost);
-            continue;
-        }
-        *cost_to
-            .entry((
-                history.x,
-                history.y,
-                history.direction_forward,
-                history.amount_moved_forward,
-            ))
-            .or_insert(history.cost) = history.cost;
-        if history.amount_moved_forward < 10 {
-            histories.push(Entry {
-                x: history.x.wrapping_add(history.direction_forward.0 as usize),
-                y: history.y.wrapping_add(history.direction_forward.1 as usize),
-                direction_forward: history.direction_forward,
-                amount_moved_forward: history.amount_moved_forward + 1,
-                cost: history.cost + map[history.y][history.x],
-            })
-        }
-        histories.push(Entry {
-            x: history
-                .x
-                .wrapping_add((history.direction_forward.1 as usize).wrapping_mul(4)),
-            y: history
-                .y
-                .wrapping_add((history.direction_forward.0 as usize).wrapping_mul(4)),
-            direction_forward: (history.direction_forward.1, history.direction_forward.0),
-            amount_moved_forward: 4,
-            cost: history.cost
-                + (0..4)
-                    .map(|i| {
-                        let new_x = history
-                            .x
-                            .wrapping_add(history.direction_forward.1.wrapping_mul(i) as usize);
-                        let new_y = history
-                            .y
-                            .wrapping_add(history.direction_forward.0.wrapping_mul(i) as usize);
-
-                        if new_x < map[0].len() && new_y < map.len() {
-                            map[new_y][new_x]
-                        } else {
-                            0
-                        }
-                    })
-                    .sum::<usize>(),
-        });
-        histories.push(Entry {
-            x: history
-                .x
-                .wrapping_add((-history.direction_forward.1 as usize).wrapping_mul(4)),
-            y: history
-                .y
-                .wrapping_add((-history.direction_forward.0 as usize).wrapping_mul(4)),
-            direction_forward: (-history.direction_forward.1, -history.direction_forward.0),
-            amount_moved_forward: 4,
-
-            cost: history.cost
-                + (0..4)
-                    .map(|i| {
-                        let new_x = history
-                            .x
-                            .wrapping_add(-history.direction_forward.1.wrapping_mul(i) as usize);
-                        let new_y = history
-                            .y
-                            .wrapping_add(-history.direction_forward.0.wrapping_mul(i) as usize);
-
-                        if new_x < map[0].len() && new_y < map.len() {
-                            map[new_y][new_x]
-                        } else {
-                            0
-                        }
-                    })
-                    .sum::<usize>(),
-        });
+        let amount = u64::from_str_radix(&color[2..2 + 5], 16).unwrap();
+        let dir = u64::from_str_radix(&color[2 + 5..2 + 5 + 1], 16).unwrap();
+        let delta = match dir {
+            1 => (0, 1),
+            3 => (0, -1),
+            2 => (-1, 0),
+            0 => (1, 0),
+            _ => unreachable!(),
+        };
+        count_2 += amount as i64;
+        let next_point_x = current_point_2.0 + delta.0 * amount as i64;
+        let next_point_y = current_point_2.1 + delta.1 * amount as i64;
+        current_sum_2 +=
+            (next_point_y + current_point_2.1) * (next_point_x - current_point_2.0) / 2;
+        current_point_2 = (next_point_x, next_point_y);
     }
-    println!("{}", min_cost);
+    current_sum += (0 + current_point.1) * (0 - current_point.0) / 2;
+    current_sum = current_sum.abs() + count / 2 + 1;
+    println!("{}", current_sum);
+    current_sum_2 += (0 + current_point_2.1) * (0 - current_point_2.0) / 2;
+    current_sum_2 = current_sum_2.abs() + count_2 / 2 + 1;
+    println!("{}", current_sum_2);
 }
