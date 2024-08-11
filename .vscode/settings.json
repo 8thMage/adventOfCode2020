@@ -1,5 +1,6 @@
 {
     "lldb.dereferencePointers": true,
     "lldb.consoleMode": "evaluate",
-    "lldb.displayFormat": "auto"
+    "lldb.displayFormat": "auto",
+    "lldb.launch.debugServer": 4711
 }
