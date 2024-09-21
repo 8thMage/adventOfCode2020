@@ -87,9 +87,10 @@ fn main() {
             ]
         })
         .collect::<Vec<_>>();
-    let start_bits = 1 << 16 as u64;
-    let mut current_stage = vec![];
-    let mut next_stage = vec![];
+    // let start_bits = 1 << 32 as u64;
+    let mut current = [-20480 * 4, 65472 * 4, 2304 * 4];
+    println!("{}", variance_of_points(&current, &stones));
+    // let mut size = start_bits;
     // for dcoords in 0..1 << 3 {
     //     let vx = (dcoords & 1) / 1;
     //     let vy = (dcoords & 2) / 2;
@@ -104,83 +105,82 @@ fn main() {
     //         size: start_bits,
     //     });
     // }
-    println!(
-        "{}",
-        does_have_over_zero(
-            &StoneWindow {
-                start: [-20480 * 128, 65472 * 128, 2304 * 128],
-                size: 64 * 128
-            },
-            &stones
-        )
-    );
-
-    current_stage.push(StoneWindow {
-        start: [-20480 * 4, 65472 * 4, 2304 * 4],
-        size: 64*16,
-    });
-    current_stage.push(StoneWindow {
-        start: [20480 * 4, -65472 * 4, -2304 * 4],
-        size: 64*16,
-    });
-    loop {
-        for (i, entry) in current_stage.drain(..).enumerate() {
-            if i % 1000 == 0 {
-                println!("heartbeat {}", i);
-            }
-            let new_size = if entry.size == 2 {
-                1
-            } else {
-                entry.size as i64 / 2
-            };
-            if entry.size == 0 {
-                // if gcd(
-                //     entry.start[0].abs(),
-                //     gcd(entry.start[1].abs(), entry.start[2].abs()),
-                // ) != 1
-                // {
-                //     continue;
-                // }
-                println!("{:?}", entry);
-                // println!("{:?}", entry.start.x + entry.start.y + entry.start.z);
-                // return;
-                continue;
-            }
-            for x_div in 0..2 {
-                let vx = entry.start[0] + x_div * new_size as i128;
-                if x_div >= entry.size as i128 {
-                    continue;
-                }
-
-                for y_div in 0..2 {
-                    let vy = entry.start[1] + y_div * new_size as i128;
-                    if y_div >= entry.size as i128 {
+    for vx in -3000..=3000 {
+        'vy: for vy in -3000..=3000 {
+            // let vx = -3;
+            // let vy = 1;
+            let mut same_point_x = None;
+            let mut same_point_y = None;
+            for i in 0..hail_stones.len() {
+                for j in i + 1..hail_stones.len() {
+                    let a = hail_stones[i];
+                    let b = hail_stones[j];
+                    let t = (((a.vx - vx) * (b.y - a.y) - (a.vy - vy) * (b.x - a.x)) as f64)
+                        / (((a.vy - vy) * (b.vx - vx) - (a.vx - vx) * (b.vy - vy)) as f64);
+                    let s = (b.x as f64 - a.x as f64 + (b.vx - vx) as f64 * t) / (a.vx - vx) as f64;
+                    // println!("0,  {} {}", t, s);
+                    if t.is_nan() || s.is_nan() {
                         continue;
                     }
-                    for z_div in 0..2 {
-                        if z_div >= entry.size as i128 {
-                            continue;
-                        }
-                        let vz = entry.start[2] + z_div * new_size as i128;
-                        let next_stone_window = StoneWindow {
-                            start: [vx, vy, vz],
-                            size: new_size as u64,
-                        };
-                        if does_have_over_zero(&next_stone_window, &stones) {
-                            next_stage.push(next_stone_window);
+                    if t.is_infinite() || s.is_infinite() {
+                        continue;
+                    }
+                    if t < 0. || s < 0. {
+                        continue 'vy;
+                    }
+                    let x = (t * (b.vx - vx) as f64).round() as i128 + b.x as i128;
+                    let y = (t * (b.vy - vy) as f64).round() as i128 + b.y as i128;
+                    if same_point_x.is_none() {
+                        same_point_x = Some(x);
+                        same_point_y = Some(y);
+                    }
+                    if same_point_x.is_some() {
+                        if same_point_x != Some(x) || same_point_y != Some(y) {
+                            // println!("{} {}", i, j);
+                            continue 'vy;
                         }
                     }
                 }
             }
-        }
+            println!("{} {}", vy, vx);
+            'vz: for vz in -3000..=3000 {
+                let mut same_point_z = None;
+                // let vz = 2;
+                if vz == 2 {
+                    println!("sdaf");
+                }
+                for i in 0..hail_stones.len() {
+                    let a = hail_stones[i];
+                    if a.vx - vx == 0 {
+                        continue;
+                    }
+                    let t = (same_point_x.unwrap() - a.x as i128) / (a.vx as i128 - vx as i128);
+                    let z = a.z as i128 + t * (a.vz as i128 - vz as i128);
 
-        swap(&mut current_stage, &mut next_stage);
-        if current_stage[0].size == 4 {
-            for i in &current_stage {
-                println!("{:?}, {}, {}", i.start[0], i.start[1], i.start[2]);
+                    if same_point_z.is_none() {
+                        same_point_z = Some(z);
+                    }
+                    if same_point_z != Some(z) {
+                        continue 'vz;
+                    }
+                }
+                println!(
+                    "{} {} {} {} {} {}",
+                    vy,
+                    vx,
+                    vz,
+                    same_point_x.unwrap(),
+                    same_point_y.unwrap(),
+                    same_point_z.unwrap()
+                );
+                println!(
+                    "{}",
+                    same_point_x.unwrap()+
+                    same_point_y.unwrap()+
+                    same_point_z.unwrap()
+                );
             }
         }
-        println!("{:?} {}", current_stage[0].size, current_stage.len());
     }
 
     // for i in 0..hail_stones.len() {
@@ -203,6 +203,61 @@ fn main() {
     //         );
     //     }
     // }
+}
+
+fn variance_of_points(stone_window: &[i128], hail_stones: &[Vec<i128>]) -> f64 {
+    let mut mean_x = 0f64;
+    let mut mean_y = 0f64;
+    let mut mean_squared_x = 0f64;
+    let mut mean_squared_y = 0f64;
+    let mut mean_xy = 0f64;
+
+    for i in 0..hail_stones.len() {
+        for j in i + 1..hail_stones.len() {
+            let delta_x = hail_stones[j][0] - hail_stones[i][0];
+            let delta_y = hail_stones[j][1] - hail_stones[i][1];
+            let delta_z = hail_stones[j][2] - hail_stones[i][2];
+
+            let triple_0 = triple_product(
+                stone_window,
+                &hail_stones[i][3..6],
+                &[delta_x, delta_y, delta_z],
+            );
+            let triple_1 =
+                triple_product(stone_window, &hail_stones[j][3..6], &hail_stones[i][3..6]);
+            let t = triple_0 as f64 / triple_1 as f64;
+            let point_x = (hail_stones[i][0] as f64 + t * hail_stones[i][3] as f64).round() as f64;
+            let point_y = (hail_stones[i][1] as f64 + t * hail_stones[i][4] as f64).round() as f64;
+            let point_z = (hail_stones[i][2] as f64 + t * hail_stones[i][5] as f64).round() as f64;
+            let r2 = stone_window[0] * stone_window[0]
+                + stone_window[1] * stone_window[1]
+                + stone_window[2] * stone_window[2];
+            let r = (r2 as f64).sqrt() as f64;
+            let s = [
+                stone_window[0] as f64,
+                stone_window[1] as f64,
+                stone_window[2] as f64,
+            ];
+            let output_x = cross_product_x(&s, &[point_x, point_y, point_z]) / r;
+            let output_y = cross_product_y(&s, &[point_x, point_y, point_z]) / r;
+            mean_x += output_x;
+            mean_y += output_y;
+            mean_squared_x += output_x * output_x;
+            mean_squared_y += output_y * output_y;
+            mean_xy += output_x * output_y;
+        }
+    }
+    mean_x /= hail_stones.len() as f64 * (hail_stones.len() - 1) as f64 / 2.;
+    mean_y /= hail_stones.len() as f64 * (hail_stones.len() - 1) as f64 / 2.;
+    mean_squared_x /= hail_stones.len() as f64 * (hail_stones.len() - 1) as f64 / 2.;
+    mean_squared_y /= hail_stones.len() as f64 * (hail_stones.len() - 1) as f64 / 2.;
+    mean_xy /= hail_stones.len() as f64 * (hail_stones.len() - 1) as f64 / 2.;
+    let t0 = mean_squared_x - mean_x * mean_x;
+    let t1 = mean_squared_y - mean_y * mean_y;
+    let t2 = mean_xy - mean_x * mean_y;
+
+    // return t0 + t1 + 2. * t2.abs();
+    return t0 + t1;
 }
 
 fn does_have_over_zero(stone_window: &StoneWindow, hail_stones: &[Vec<i128>]) -> bool {
@@ -376,6 +431,14 @@ fn cross_product_x(a: &[f64], b: &[f64]) -> f64 {
 }
 
 fn cross_product_y(a: &[f64], b: &[f64]) -> f64 {
+    a[2] * b[0] - a[0] * b[2]
+}
+
+fn cross_product_x_128(a: &[i128], b: &[i128]) -> i128 {
+    a[1] * b[2] - a[2] * b[1]
+}
+
+fn cross_product_y_128(a: &[i128], b: &[i128]) -> i128 {
     a[2] * b[0] - a[0] * b[2]
 }
 
