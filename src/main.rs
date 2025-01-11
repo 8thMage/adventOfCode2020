@@ -1,51 +1,97 @@
 fn main() {
     let input = include_str!("input.txt");
-    let sub = input.split("mul(");
-    let sub2 = input
-        .split("do()")
-        .map(|s| s.split_once("don't").unwrap_or((s, "")).0)
-        .flat_map(|s| s.split("mul("));
-    let mut sum = 0;
-    let mut is_activated = true;
-    let mut is_first = true;
-    for subs in sub {
-        if is_activated && !is_first {
-            let chars = subs.chars();
-            let (d, n) = chars
-                .clone()
-                .take_while(|c| c.is_numeric())
-                .fold((0, 0u64), |acc, c| {
-                    (acc.0 + 1, acc.1 * 10 + c.to_digit(10).unwrap() as u64)
-                });
-            if chars.clone().skip(d).next() != Some(',') {
-                continue;
+    let map = input
+        .lines()
+        .map(|s| s.chars().collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    let mut count = 0;
+    for line in &map {
+        for x in 0..line.len() - 3 {
+            if line[x] == 'X' && line[x + 1] == 'M' && line[x + 2] == 'A' && line[x + 3] == 'S' {
+                count += 1
             }
-            let (d2, n2) = chars
-                .clone()
-                .skip(d + 1)
-                .take_while(|c| c.is_numeric())
-                .fold((0, 0u64), |acc, c| {
-                    (acc.0 + 1, acc.1 * 10 + c.to_digit(10).unwrap() as u64)
-                });
-            if chars.clone().skip(d + d2 + 1).next() != Some(')') {
-                continue;
-            }
-            sum += n * n2;
-        }
-        is_first = false;
-        let pos_dont = subs.rfind("don't()");
-        let pos_do = subs.rfind("do()");
-        if pos_dont.is_some() && pos_do.is_none() {
-            is_activated = false;
-        } else if pos_do.is_some() && pos_dont.is_none() {
-            is_activated = true;
-        } else if pos_do.is_some() && pos_dont.is_some() {
-            if pos_do.unwrap() > pos_dont.unwrap() {
-                is_activated = true;
-            } else {
-                is_activated = false;
+            if line[x] == 'S' && line[x + 1] == 'A' && line[x + 2] == 'M' && line[x + 3] == 'X' {
+                count += 1;
             }
         }
     }
-    println!("{}", sum);
+    for y in 0..map.len() - 3 {
+        for x in 0..map.len() {
+            if map[y][x] == 'X'
+                && map[y + 1][x] == 'M'
+                && map[y + 2][x] == 'A'
+                && map[y + 3][x] == 'S'
+            {
+                count += 1;
+            }
+            if map[y + 3][x] == 'X'
+                && map[y + 2][x] == 'M'
+                && map[y + 1][x] == 'A'
+                && map[y][x] == 'S'
+            {
+                count += 1;
+            }
+        }
+    }
+    for y in 0..map.len() - 3 {
+        for x in 0..map.len() - 3 {
+            if map[y][x] == 'X'
+                && map[y + 1][x + 1] == 'M'
+                && map[y + 2][x + 2] == 'A'
+                && map[y + 3][x + 3] == 'S'
+            {
+                count += 1;
+            }
+            if map[y + 3][x + 3] == 'X'
+                && map[y + 2][x + 2] == 'M'
+                && map[y + 1][x + 1] == 'A'
+                && map[y][x] == 'S'
+            {
+                count += 1;
+            }
+        }
+    }
+    for y in 0..map.len() - 3 {
+        for x in 0..map.len() - 3 {
+            if map[y][x + 3] == 'X'
+                && map[y + 1][x + 2] == 'M'
+                && map[y + 2][x + 1] == 'A'
+                && map[y + 3][x] == 'S'
+            {
+                count += 1;
+            }
+            if map[y + 3][x] == 'X'
+                && map[y + 2][x + 1] == 'M'
+                && map[y + 1][x + 2] == 'A'
+                && map[y][x + 3] == 'S'
+            {
+                count += 1;
+            }
+        }
+    }
+    let mut count2 = 0;
+    for y in 0..map.len() - 2 {
+        for x in 0..map.len() - 2 {
+            let mut forward = false;
+            let mut backward = false;
+            if map[y][x + 2] == 'M' && map[y + 1][x + 1] == 'A' && map[y + 2][x] == 'S' {
+                backward = true;
+            }
+            if map[y + 2][x] == 'M' && map[y + 1][x + 1] == 'A' && map[y][x + 2] == 'S' {
+                backward = true;
+            }
+            if map[y + 2][x + 2] == 'M' && map[y + 1][x + 1] == 'A' && map[y][x] == 'S' {
+                forward = true;
+            }
+            if map[y][x] == 'M' && map[y + 1][x + 1] == 'A' && map[y + 2][x + 2] == 'S' {
+                forward = true;
+            }
+            if forward && backward {
+                count2 += 1;
+            }
+        }
+    }
+
+    println!("{}", count);
+    println!("{}", count2);
 }
